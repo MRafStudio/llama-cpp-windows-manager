@@ -34,9 +34,12 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build-installer.ps1 -C
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\test-release-gate.ps1 -IncludePublish -IncludeInstaller -CertificateThumbprint "<cert-thumbprint>" -RequireSigned
 ```
 
-GitHub public release builds must run `.github/workflows/release.yml` with the
-protected `release` environment and its `WINDOWS_SIGNING_PFX_BASE64` and
-`WINDOWS_SIGNING_PFX_PASSWORD` secrets configured.
+Trusted signed GitHub release builds may run `.github/workflows/release.yml`
+manually with the protected `release` environment and its
+`WINDOWS_SIGNING_PFX_BASE64` and `WINDOWS_SIGNING_PFX_PASSWORD` secrets
+configured. Version tags do not trigger that optional signing workflow.
+Unsigned releases must pass the normal release gate, include matching SHA-256
+companions, and be described as unsigned.
 
 ## Release Gate
 

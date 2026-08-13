@@ -1,9 +1,6 @@
-name: Signed release artifacts
+name: Optional signed release artifacts
 
 on:
-  push:
-    tags:
-      - "v*"
   workflow_dispatch:
 
 permissions:
@@ -11,7 +8,7 @@ permissions:
 
 jobs:
   signed-portable:
-    name: Build signed Windows portable
+    name: Build signed Windows release
     runs-on: windows-latest
     timeout-minutes: 30
     environment: release

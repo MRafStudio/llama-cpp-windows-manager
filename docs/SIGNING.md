@@ -15,14 +15,16 @@ When `build-installer.ps1 -SkipPublish -RequireSigned` reuses an existing
 publish folder, the script verifies that the published executable is already
 signed before compiling and signing the installer.
 
-Public tag and manually dispatched builds use
-`.github/workflows/release.yml`. Configure the protected `release` environment
-with `WINDOWS_SIGNING_PFX_BASE64` and `WINDOWS_SIGNING_PFX_PASSWORD`. The
-workflow refuses to build public artifacts without both secrets, imports the
-certificate only for the job, runs the release gate with `-RequireSigned`, and
-removes the imported certificate afterward. Ordinary pull-request CI continues
-to use an unsigned packaging smoke test because untrusted PRs must never receive
-signing credentials.
+Optional trusted signed builds use `.github/workflows/release.yml` through a
+manual dispatch. Configure the protected `release` environment with
+`WINDOWS_SIGNING_PFX_BASE64` and `WINDOWS_SIGNING_PFX_PASSWORD`. The workflow
+refuses to build signed artifacts without both secrets, imports the certificate
+only for the job, runs the release gate with `-RequireSigned`, and removes the
+imported certificate afterward. Version tags do not start this optional job,
+so repositories without signing secrets can publish accurately labelled
+unsigned releases without a failing status check. Ordinary pull-request CI
+continues to use an unsigned packaging smoke test because untrusted PRs must
+never receive signing credentials.
 
 ## Free Options
 

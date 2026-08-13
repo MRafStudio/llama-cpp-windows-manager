@@ -140,6 +140,8 @@ public sealed partial class ReleaseHardeningTests
         Assert.Contains("Assert-InstallerArtifacts", releaseGate, StringComparison.Ordinal);
         Assert.Contains("WINDOWS_SIGNING_PFX_BASE64", releaseWorkflow, StringComparison.Ordinal);
         Assert.Contains("-RequireSigned", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("workflow_dispatch:", releaseWorkflow, StringComparison.Ordinal);
+        Assert.DoesNotContain("tags:", releaseWorkflow, StringComparison.Ordinal);
         Assert.Contains("actions/checkout@v7", releaseWorkflow, StringComparison.Ordinal);
         Assert.Contains("actions/setup-dotnet@v6", releaseWorkflow, StringComparison.Ordinal);
         Assert.Contains("actions/upload-artifact@v7", releaseWorkflow, StringComparison.Ordinal);
