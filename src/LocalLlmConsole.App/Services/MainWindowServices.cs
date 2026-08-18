@@ -85,7 +85,8 @@ public sealed record MainWindowCoreAppServices(
     SettingsPageDefinitionService SettingsPageDefinitions,
     HelpCatalogService HelpCatalog,
     HelpNavigationApplicationService HelpNavigation,
-    LocalAppServiceStartupService LocalAppStartup);
+    LocalAppServiceStartupService LocalAppStartup,
+    LlamaServiceController LlamaService);
 
 public sealed record MainWindowCoreHuggingFaceServices(
     HuggingFaceModelCardApplicationService HuggingFaceModelCards,

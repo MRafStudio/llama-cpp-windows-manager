@@ -166,6 +166,7 @@ public sealed partial class AppServiceFactory
         var modelLaunchHeadSelectionApplication = CreateModelLaunchHeadSelectionApplicationService();
         var modelLaunchSettingsSaveApplication = CreateModelLaunchSettingsSaveApplicationService();
         var modelLaunchVariantSaveApplication = CreateModelLaunchVariantSaveApplicationService();
+        var llamaServiceController = CreateLlamaServiceController(request.ProcessRunner);
 
         return new MainWindowCoreServices(
             new MainWindowCoreUiServices(
@@ -212,7 +213,8 @@ public sealed partial class AppServiceFactory
                 settingsPageDefinitions,
                 helpCatalog,
                 helpNavigation,
-                localAppStartup),
+                localAppStartup,
+                llamaServiceController),
             new MainWindowCoreHuggingFaceServices(
                 huggingFaceModelCards,
                 huggingFaceSearchApplication,

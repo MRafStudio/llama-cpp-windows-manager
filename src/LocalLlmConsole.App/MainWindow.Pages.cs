@@ -83,6 +83,25 @@ public partial class MainWindow
         });
     }
 
+    private void ShowService()
+    {
+        SetPage("Service", Loc.T("PageSubtitle.Service"));
+
+        // Создаём ViewModel если ещё не создана
+        if (_serviceViewModel is null)
+        {
+            var setStatus = (string text) => _viewModel.SetStatus(text);
+            var setStatusAsync = (string text) => Task.Run(() => { _viewModel.SetStatus(text); return Task.CompletedTask; });
+            _serviceViewModel = new LlamaServiceViewModel(_coreServices.App.LlamaService, setStatus, setStatusAsync);
+        }
+
+        // Привязываем ViewModel к MainWindowViewModel для данных
+        _viewModel.LlamaService = _serviceViewModel;
+
+        var servicePage = Ui.Pages.Service.ServicePageFactory.Create(new Ui.Pages.Service.ServicePageRequest(_serviceViewModel));
+        PageHost.Content = servicePage.Content;
+    }
+
     private void RefreshCurrentPage()
     {
         switch (_viewModel.CurrentPage)
@@ -96,6 +115,7 @@ public partial class MainWindow
             case "Windows": ShowWindows(); break;
             case "WSL Linux": ShowWslLinux(); break;
             case "Updates": ShowUpdates(); break;
+            case "Service": ShowService(); break;
             case "Help": ShowHelp(); break;
         }
     }

@@ -19,6 +19,13 @@ public sealed partial class AppServiceFactory
         => new(processRunner, new RuntimeLaunchOptionDiagnosticsService(
             Path.Combine(_workspaceRoot, "diagnostics", "runtime-options")));
 
+    public LlamaServiceController CreateLlamaServiceController(IProcessRunner processRunner)
+    {
+        var llamaServerPath = Path.Combine(_workspaceRoot, "runtimes", "llama-server.exe");
+        var logPath = Path.Combine(_workspaceRoot, "logs", "llama-service.log");
+        return new LlamaServiceController(processRunner, _workspaceRoot, llamaServerPath, logPath);
+    }
+
     public MainWindowInfrastructureServices CreateMainWindowInfrastructureServices()
     {
         var processRunner = CreateProcessRunner();

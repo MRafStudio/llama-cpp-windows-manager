@@ -21,6 +21,7 @@ public sealed class MainWindowViewModel : ObservableViewModel
     public SettingsPageViewModel Settings { get; } = new();
     public LaunchSettingsViewModel LaunchSettings { get; } = new();
     public UpdatesPageViewModel Updates { get; } = new();
+    public LlamaServiceViewModel LlamaService { get; set; } = null!;
 
     public string CurrentPage
     {

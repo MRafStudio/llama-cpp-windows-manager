@@ -814,5 +814,21 @@
   "Help.Article.updates-and-recovery.Action.2": "Open Logs",
   "Help.Article.updates-and-recovery.Action.3": "Open Lifetime",
   "Overview.EndpointInspectionTooltip": "Double-click a loaded model or gateway row to inspect the live endpoint report. Click an API endpoint directly for the same report.",
-  "Launch.SaveProfileTooltip": "Save changes to the selected named launch profile."
+  "Launch.SaveProfileTooltip": "Save changes to the selected named launch profile.",
+  "PageSubtitle.Service": "Service",
+  "Tooltip.Service": "Manage llama-server as a background Windows service.",
+  "Service.StartButton": "Start Service",
+  "Service.StopButton": "Stop Service",
+  "Service.RestartButton": "Restart",
+  "Service.Status.Running": "Running",
+  "Service.Status.Stopped": "Stopped",
+  "Service.Status.Starting": "Starting...",
+  "Service.Status.Stopping": "Stopping...",
+  "Service.Status.Error": "Error",
+  "Service.Description": "The service runs llama-server as a Windows service in the background. This provides automatic restart on crashes and independence from the GUI application.\n\nParameter changes require a manual service restart via the 'Restart' button.",
+  "Service.StatusLabel": "Service Status:",
+  "Service.MessagesLabel": "Messages:",
+  "Service.ElevationPrompt": "Managing the service requires administrator privileges. Restart the application as administrator?",
+  "Service.ElevationYes": "Yes, restart",
+  "Service.ElevationNo": "Cancel"
 }

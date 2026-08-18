@@ -164,6 +164,7 @@
           </Border>
           <StackPanel Grid.Row="2">
             <Button x:Name="UpdatesNavButton" Style="{StaticResource NavButton}" local:VisualRole.NavGlyph="&#xE895;" Click="ShowUpdates_Click"/>
+            <Button x:Name="ServiceNavButton" Style="{StaticResource NavButton}" local:VisualRole.NavGlyph="&#xE176;" Click="ShowService_Click"/>
             <Button x:Name="HelpNavButton" Style="{StaticResource NavButton}" local:VisualRole.NavGlyph="&#xE897;" Click="ShowHelp_Click"/>
           </StackPanel>
         </Grid>

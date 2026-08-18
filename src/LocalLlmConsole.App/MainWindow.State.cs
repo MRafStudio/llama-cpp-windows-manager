@@ -48,6 +48,7 @@ public partial class MainWindow
     private readonly EnvironmentPageSnapshotCache _environmentPageSnapshots;
     private Forms.NotifyIcon? _trayIcon;
     private int _controlShutdownConfirmed;
+    private LlamaServiceViewModel? _serviceViewModel;
 
     private MainWindowLoadedAppServices AppServices
         => _appServices ?? throw new InvalidOperationException("Loaded app services are not initialized.");

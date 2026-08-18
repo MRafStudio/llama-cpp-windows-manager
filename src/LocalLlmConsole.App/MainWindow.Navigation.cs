@@ -38,4 +38,5 @@ public partial class MainWindow
     private void ShowLogs_Click(object sender, RoutedEventArgs e) => ShowLogs();
     private void ShowUpdates_Click(object sender, RoutedEventArgs e) => ShowUpdates();
     private void ShowHelp_Click(object sender, RoutedEventArgs e) => ShowHelp();
+    private void ShowService_Click(object sender, RoutedEventArgs e) => ShowService();
 }

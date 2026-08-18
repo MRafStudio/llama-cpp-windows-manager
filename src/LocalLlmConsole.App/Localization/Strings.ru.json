@@ -814,5 +814,21 @@
   "Help.Article.updates-and-recovery.Detail.3": "Use Logs for app, runtime, job, and bounded redacted Control API activity.",
   "Help.Article.updates-and-recovery.Action.1": "Check Updates",
   "Help.Article.updates-and-recovery.Action.2": "Open Logs",
-  "Help.Article.updates-and-recovery.Action.3": "Open Lifetime"
+  "Help.Article.updates-and-recovery.Action.3": "Open Lifetime",
+  "PageSubtitle.Service": "Служба",
+  "Tooltip.Service": "Управление службой llama-server в фоновом режиме.",
+  "Service.StartButton": "Запустить службу",
+  "Service.StopButton": "Остановить службу",
+  "Service.RestartButton": "Перезапустить",
+  "Service.Status.Running": "Работает",
+  "Service.Status.Stopped": "Остановлена",
+  "Service.Status.Starting": "Запуск...",
+  "Service.Status.Stopping": "Остановка...",
+  "Service.Status.Error": "Ошибка",
+  "Service.Description": "Служба позволяет запускать llama-server в фоновом режиме как Windows-службу. Это обеспечивает автоматический перезапуск при сбоях и независимость от GUI приложения.\n\nИзменения параметров требуют ручного перезапуска службы через кнопку 'Перезапустить'.",
+  "Service.StatusLabel": "Статус службы:",
+  "Service.MessagesLabel": "Сообщения:",
+  "Service.ElevationPrompt": "Для управления службой требуются права администратора. Перезапустить приложение с правами администратора?",
+  "Service.ElevationYes": "Да, перезапустить",
+  "Service.ElevationNo": "Отмена"
 }
