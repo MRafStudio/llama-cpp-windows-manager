@@ -4,7 +4,7 @@ namespace LocalLlmConsole;
 
 public partial class App : System.Windows.Application
 {
-    private const string SingleInstanceMutexName = @"Local\llama.cpp-console-single-instance";
+    private const string SingleInstanceMutexName = @"Local\llama.cpp-service-console-single-instance";
 
     private readonly SingleInstanceApplicationService _singleInstance = new(SingleInstanceApplicationService.AcquireMutexLease);
     private readonly DialogService _dialogs = new(ThemedMessageBox.Show);

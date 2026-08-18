@@ -134,7 +134,7 @@ public sealed record AppSettings(
         false,
         "local",
         true,
-        8082,
+        8101,
         "singleActive",
         "127.0.0.1",
         true,
