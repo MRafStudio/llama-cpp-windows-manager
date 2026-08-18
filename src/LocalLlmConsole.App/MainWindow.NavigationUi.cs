@@ -7,7 +7,7 @@ public partial class MainWindow
     private void SetActiveNavigation(string title)
     {
         System.Windows.Automation.AutomationProperties.SetName(PageHost, title);
-        foreach (var button in new[] { OverviewNavButton, ModelsNavButton, RuntimesNavButton, WindowsNavButton, WslLinuxNavButton, SettingsNavButton, LifetimeNavButton, LogsNavButton, UpdatesNavButton, HelpNavButton })
+        foreach (var button in new[] { OverviewNavButton, ModelsNavButton, RuntimesNavButton, ServiceNavButton, WindowsNavButton, WslLinuxNavButton, SettingsNavButton, LifetimeNavButton, LogsNavButton, UpdatesNavButton, HelpNavButton })
             button.Tag = null;
 
         var active = title switch
@@ -15,6 +15,7 @@ public partial class MainWindow
             "Overview" => OverviewNavButton,
             "Models" => ModelsNavButton,
             "Runtimes" => RuntimesNavButton,
+            "Service" => ServiceNavButton,
             "Windows" => WindowsNavButton,
             "WSL Linux" => WslLinuxNavButton,
             "Settings" => SettingsNavButton,
@@ -35,6 +36,7 @@ public partial class MainWindow
         UiAccessibility.SetButtonToolTip(OverviewNavButton, Loc.T("Tooltip.NavOverview"));
         UiAccessibility.SetButtonToolTip(ModelsNavButton, Loc.T("Tooltip.NavModels"));
         UiAccessibility.SetButtonToolTip(RuntimesNavButton, Loc.T("Tooltip.NavRuntimes"));
+        UiAccessibility.SetButtonToolTip(ServiceNavButton, Loc.T("Tooltip.NavService"));
         UiAccessibility.SetButtonToolTip(WindowsNavButton, Loc.T("Tooltip.NavWindows"));
         UiAccessibility.SetButtonToolTip(WslLinuxNavButton, Loc.T("Tooltip.NavWslLinux"));
         UiAccessibility.SetButtonToolTip(SettingsNavButton, Loc.T("Tooltip.NavSettings"));

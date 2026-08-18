@@ -117,8 +117,8 @@ public sealed record RuntimeLaunchRequest
     public int SpecDraftMaxTokens { get; init; } = AppSettings.DefaultSpecDraftMaxTokens;
     public double SpecDraftPSplit { get; init; } = -1.0;
     public double SpecDraftPMin { get; init; } = -1.0;
-    public string SpecDraftCacheTypeK { get; init; } = "q8_0";
-    public string SpecDraftCacheTypeV { get; init; } = "q8_0";
+    public string SpecDraftCacheTypeK { get; init; } = "q4_0";
+    public string SpecDraftCacheTypeV { get; init; } = "q4_0";
     public IReadOnlyList<string> ExtraArgs { get; init; } = Array.Empty<string>();
 }
 

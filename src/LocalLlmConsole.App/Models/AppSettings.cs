@@ -95,7 +95,7 @@ public sealed record AppSettings(
     public const int DefaultContextSize = 131_072;
     public const int DefaultGpuLayers = 999;
     public const int DefaultBatchSize = 4096;
-    public const string DefaultCacheType = "q8_0";
+    public const string DefaultCacheType = "q4_0";
     public const double DefaultTemperature = 0.65;
     public const int DefaultMaxTokens = -1;
     public const int DefaultSeed = -1;

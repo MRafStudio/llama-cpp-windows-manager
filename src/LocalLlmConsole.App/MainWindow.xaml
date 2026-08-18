@@ -15,7 +15,10 @@
                         CornerRadius="8"
                         UseAeroCaptionButtons="False"/>
   </shell:WindowChrome.WindowChrome>
-  <Border Background="{DynamicResource AppBack}"
+  <Border x:Name="RootBorder"
+          Background="{DynamicResource AppBack}"
+          BorderBrush="{DynamicResource PanelBorderStrong}"
+          BorderThickness="1"
           CornerRadius="8"
           SnapsToDevicePixels="True">
     <Grid>
@@ -128,6 +131,7 @@
             <Button x:Name="OverviewNavButton" Style="{StaticResource NavButton}" local:VisualRole.NavGlyph="&#xE80F;" Click="ShowOverview_Click"/>
             <Button x:Name="ModelsNavButton" Style="{StaticResource NavButton}" local:VisualRole.NavGlyph="&#xE8B7;" Click="ShowModels_Click"/>
             <Button x:Name="RuntimesNavButton" Style="{StaticResource NavButton}" local:VisualRole.NavGlyph="&#xE943;" Click="ShowRuntimes_Click"/>
+            <Button x:Name="ServiceNavButton" Style="{StaticResource NavButton}" local:VisualRole.NavGlyph="&#xE71D;" Click="ShowService_Click"/>
             <Button x:Name="SettingsNavButton" Style="{StaticResource NavButton}" local:VisualRole.NavGlyph="&#xE713;" Click="ShowSettings_Click"/>
             <Button x:Name="LifetimeNavButton" Style="{StaticResource NavButton}" local:VisualRole.NavGlyph="&#xE823;" Click="ShowLifetime_Click"/>
             <Button x:Name="LogsNavButton" Style="{StaticResource NavButton}" local:VisualRole.NavGlyph="&#xE8A5;" Click="ShowLogs_Click"/>
@@ -164,7 +168,6 @@
           </Border>
           <StackPanel Grid.Row="2">
             <Button x:Name="UpdatesNavButton" Style="{StaticResource NavButton}" local:VisualRole.NavGlyph="&#xE895;" Click="ShowUpdates_Click"/>
-            <Button x:Name="ServiceNavButton" Style="{StaticResource NavButton}" local:VisualRole.NavGlyph="&#xE176;" Click="ShowService_Click"/>
             <Button x:Name="HelpNavButton" Style="{StaticResource NavButton}" local:VisualRole.NavGlyph="&#xE897;" Click="ShowHelp_Click"/>
           </StackPanel>
         </Grid>

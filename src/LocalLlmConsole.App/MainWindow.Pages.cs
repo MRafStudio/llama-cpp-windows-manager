@@ -92,7 +92,18 @@ public partial class MainWindow
         {
             var setStatus = (string text) => _viewModel.SetStatus(text);
             var setStatusAsync = (string text) => Task.Run(() => { _viewModel.SetStatus(text); return Task.CompletedTask; });
-            _serviceViewModel = new LlamaServiceViewModel(_coreServices.App.LlamaService, setStatus, setStatusAsync);
+
+            var serviceManager = new WindowsServiceManager();
+            var installer = new WindowsServiceInstallerClient();
+            var configWriter = new ServiceLaunchConfigWriter(_workspaceRoot);
+
+            _serviceViewModel = new LlamaServiceViewModel(
+                serviceManager,
+                installer,
+                configWriter,
+                setStatus,
+                setStatusAsync,
+                CollectServiceLaunchArgs);
         }
 
         // Привязываем ViewModel к MainWindowViewModel для данных
@@ -100,6 +111,54 @@ public partial class MainWindow
 
         var servicePage = Ui.Pages.Service.ServicePageFactory.Create(new Ui.Pages.Service.ServicePageRequest(_serviceViewModel));
         PageHost.Content = servicePage.Content;
+    }
+
+    /// <summary>
+    /// Собирает актуальные аргументы запуска llama-server для выбранной модели
+    /// (путь к модели, порт, контекст, кэши и т.д.) — как при запуске из GUI.
+    /// </summary>
+    private IReadOnlyList<string> CollectServiceLaunchArgs()
+    {
+        try
+        {
+            var model = SelectedModel();
+            if (model is null) return Array.Empty<string>();
+
+            var runtime = SelectedRuntime();
+            if (runtime is null) return Array.Empty<string>();
+
+            // Штатный сервис: строит финальные параметры запуска модели
+            // (профиль + дефолты) — как при запуске из GUI.
+            var viewState = ModelServices.ModelLaunchSettingsWorkflow
+                .BuildAsync(model, _settings, CancellationToken.None, SelectedModelLaunchProfileId())
+                .GetAwaiter().GetResult();
+            var appSettings = viewState.LaunchSettings;
+
+            var extra = new List<string>();
+            if (appSettings.EnableMetrics) extra.Add("--metrics");
+            extra.AddRange(CustomLaunchParameterParser.Parse(appSettings.CustomParameters));
+
+            var context = new RuntimeLaunchRequestContext(
+                runtime.Mode,
+                runtime.Backend,
+                runtime.ExecutablePath,
+                model.ModelPath,
+                "127.0.0.1",
+                AllowNetworkAccess: false,
+                appSettings.VisionProjectorPath,
+                VisionProjectorEmbedded: string.Equals(appSettings.VisionMode, "on", StringComparison.OrdinalIgnoreCase)
+                    && string.IsNullOrWhiteSpace(appSettings.VisionProjectorPath),
+                DraftModelPath: appSettings.SpecDraftModelPath,
+                MtpHeadPath: LaunchSettingMetadataService.IsAtomicMtpSpeculativeType(appSettings.SpeculativeType) ? appSettings.MtpHeadPath : "",
+                ExtraArguments: extra);
+
+            var request = RuntimeLaunchRequestFactory.Create(appSettings, context);
+            return RuntimeAdapter.BuildArgs(request);
+        }
+        catch
+        {
+            return Array.Empty<string>();
+        }
     }
 
     private void RefreshCurrentPage()

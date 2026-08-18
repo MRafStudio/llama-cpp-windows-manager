@@ -1,20 +1,26 @@
 namespace LocalLlmConsole.ViewModels;
 
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
+using LocalLlmConsole.Localization;
 using LocalLlmConsole.Services;
 
 /// <summary>
 /// ViewModel для страницы управления службой llama-server.
+/// Работает через собственные классы управления (WindowsServiceManager,
+/// WindowsServiceInstallerClient, ServiceLaunchConfigWriter) — без вторжения
+/// в авторскую логику запуска моделей.
 /// </summary>
 public sealed class LlamaServiceViewModel : INotifyPropertyChanged
 {
-    private readonly LlamaServiceController _controller;
-    private readonly Action<string> _setStatus;
-    private readonly Func<string, Task> _setStatusAsync;
+    private readonly WindowsServiceManager _serviceManager;
+    private readonly WindowsServiceInstallerClient _installer;
+    private readonly ServiceLaunchConfigWriter _configWriter;
+    private readonly Func<IReadOnlyList<string>>? _launchArgsProvider;
 
     private LlamaServiceStatus _status;
     private string _statusText = string.Empty;
@@ -22,10 +28,8 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
     private string _llamaServerPathText = string.Empty;
     private bool _isLoading;
     private bool _isElevated;
+    private bool _isInstalled;
 
-    /// <summary>
-    /// Статус службы.
-    /// </summary>
     public LlamaServiceStatus Status
     {
         get => _status;
@@ -35,14 +39,14 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
             {
                 _status = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(CanStart));
+                OnPropertyChanged(nameof(CanStop));
+                OnPropertyChanged(nameof(CanRestart));
                 UpdateButtons();
             }
         }
     }
 
-    /// <summary>
-    /// Текстовое представление статуса.
-    /// </summary>
     public string StatusText
     {
         get => _statusText;
@@ -56,9 +60,6 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
         }
     }
 
-    /// <summary>
-    /// Текст с PID процесса.
-    /// </summary>
     public string ProcessIdText
     {
         get => _processIdText;
@@ -72,9 +73,6 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
         }
     }
 
-    /// <summary>
-    /// Путь к llama-server.
-    /// </summary>
     public string LlamaServerPathText
     {
         get => _llamaServerPathText;
@@ -88,9 +86,6 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
         }
     }
 
-    /// <summary>
-    /// Загружается ли статус.
-    /// </summary>
     public bool IsLoading
     {
         get => _isLoading;
@@ -100,13 +95,15 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
             {
                 _isLoading = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(CanInstall));
+                OnPropertyChanged(nameof(CanUninstall));
+                OnPropertyChanged(nameof(CanStart));
+                OnPropertyChanged(nameof(CanStop));
+                OnPropertyChanged(nameof(CanRestart));
             }
         }
     }
 
-    /// <summary>
-    /// Запущено ли приложение с правами администратора.
-    /// </summary>
     public bool IsElevated
     {
         get => _isElevated;
@@ -121,77 +118,117 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
     }
 
     /// <summary>
-    /// Команда запуска службы.
+    /// Установлена ли Windows-служба.
     /// </summary>
+    public bool IsInstalled
+    {
+        get => _isInstalled;
+        private set
+        {
+            if (_isInstalled != value)
+            {
+                _isInstalled = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(CanStart));
+                OnPropertyChanged(nameof(CanStop));
+                OnPropertyChanged(nameof(CanRestart));
+                OnPropertyChanged(nameof(CanInstall));
+                OnPropertyChanged(nameof(CanUninstall));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Доступна ли установка службы (нет активной операции, служба не установлена).
+    /// </summary>
+    public bool CanInstall => !_isLoading && !_isInstalled;
+
+    /// <summary>
+    /// Доступно ли удаление службы (нет активной операции, служба установлена).
+    /// </summary>
+    public bool CanUninstall => !_isLoading && _isInstalled;
+
+    /// <summary>
+    /// Доступен ли запуск службы.
+    /// </summary>
+    public bool CanStart => !_isLoading && _isInstalled && _status != LlamaServiceStatus.Running;
+
+    /// <summary>
+    /// Доступна ли остановка службы.
+    /// </summary>
+    public bool CanStop => !_isLoading && _isInstalled && _status == LlamaServiceStatus.Running;
+
+    /// <summary>
+    /// Доступен ли перезапуск службы.
+    /// </summary>
+    public bool CanRestart => !_isLoading && _isInstalled && _status == LlamaServiceStatus.Running;
+
     public ICommand StartCommand { get; }
-
-    /// <summary>
-    /// Команда остановки службы.
-    /// </summary>
     public ICommand StopCommand { get; }
-
-    /// <summary>
-    /// Команда перезапуска службы.
-    /// </summary>
     public ICommand RestartCommand { get; }
-
-    /// <summary>
-    /// Команда обновления статуса.
-    /// </summary>
     public ICommand RefreshCommand { get; }
-
-    /// <summary>
-    /// Команда перезапуска приложения с правами администратора.
-    /// </summary>
     public ICommand ElevateCommand { get; }
+    public ICommand InstallCommand { get; }
+    public ICommand UninstallCommand { get; }
 
     public LlamaServiceViewModel(
-        LlamaServiceController controller,
+        WindowsServiceManager serviceManager,
+        WindowsServiceInstallerClient installer,
+        ServiceLaunchConfigWriter configWriter,
         Action<string> setStatus,
-        Func<string, Task> setStatusAsync)
+        Func<string, Task> setStatusAsync,
+        Func<IReadOnlyList<string>>? launchArgsProvider = null)
     {
-        _controller = controller ?? throw new ArgumentNullException(nameof(controller));
+        _serviceManager = serviceManager ?? throw new ArgumentNullException(nameof(serviceManager));
+        _installer = installer ?? throw new ArgumentNullException(nameof(installer));
+        _configWriter = configWriter ?? throw new ArgumentNullException(nameof(configWriter));
         _setStatus = setStatus ?? throw new ArgumentNullException(nameof(setStatus));
         _setStatusAsync = setStatusAsync ?? throw new ArgumentNullException(nameof(setStatusAsync));
+        _launchArgsProvider = launchArgsProvider;
 
-        // Инициализация команд
         StartCommand = new RelayCommand(ExecuteStart, CanExecuteStart);
         StopCommand = new RelayCommand(ExecuteStop, CanExecuteStop);
         RestartCommand = new RelayCommand(ExecuteRestart, CanExecuteRestart);
         RefreshCommand = new RelayCommand(ExecuteRefresh, _ => true);
         ElevateCommand = new RelayCommand(ExecuteElevate, _ => true);
+        InstallCommand = new RelayCommand(ExecuteInstall, CanExecuteInstall);
+        UninstallCommand = new RelayCommand(ExecuteUninstall, CanExecuteUninstall);
 
-        // Подписка на события
-        _controller.StatusChanged += OnStatusChanged;
-
-        // Проверка прав
         IsElevated = IsAdministrator();
 
-        // Загрузка начального статуса
         _ = LoadStatusAsync();
     }
 
-    /// <summary>
-    /// Загрузка начального статуса.
-    /// </summary>
+    private readonly Action<string> _setStatus;
+    private readonly Func<string, Task> _setStatusAsync;
+
     private async Task LoadStatusAsync()
     {
         IsLoading = true;
         try
         {
-            var result = _controller.CheckStatus();
-            if (result.Success)
+            IsInstalled = _serviceManager.IsInstalled();
+
+            if (!IsInstalled)
             {
-                UpdateFromResult(result);
+                StatusText = Loc.T("Service.Status.NotInstalled");
+                Status = LlamaServiceStatus.Stopped;
+                return;
             }
-            else
+
+            var status = _serviceManager.GetStatus();
+            Status = status;
+            StatusText = status switch
             {
-                StatusText = $"Ошибка: {result.Message}";
-            }
+                LlamaServiceStatus.Running => Loc.T("Service.Status.Running"),
+                LlamaServiceStatus.Stopped => Loc.T("Service.Status.Stopped"),
+                _ => Loc.T("Service.Status.Unknown")
+            };
+            ProcessIdText = status == LlamaServiceStatus.Running ? $"PID: {GetLlamaServerPid()}" : "PID: —";
         }
         catch (Exception ex)
         {
-            StatusText = $"Ошибка: {ex.Message}";
+            StatusText = $"{Loc.T("Service.Status.Error")}: {ex.Message}";
         }
         finally
         {
@@ -199,66 +236,23 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
         }
     }
 
-    /// <summary>
-    /// Обработчик события изменения статуса.
-    /// </summary>
-    private void OnStatusChanged(LlamaServiceStatus status, string message)
-    {
-        System.Windows.Application.Current.Dispatcher.Invoke(() =>
-        {
-            Status = status;
-            StatusText = message;
-            ProcessIdText = _controller.CurrentProcessId > 0
-                ? $"PID: {_controller.CurrentProcessId}"
-                : "PID: —";
-        });
-    }
+    private void UpdateButtons() => CommandManager.InvalidateRequerySuggested();
 
-    /// <summary>
-    /// Обновление UI из результата операции.
-    /// </summary>
-    private void UpdateFromResult(LlamaServiceOperationResult result)
-    {
-        Status = result.Status;
-        StatusText = result.Message;
-        ProcessIdText = _controller.CurrentProcessId > 0
-            ? $"PID: {_controller.CurrentProcessId}"
-            : "PID: —";
-    }
-
-    /// <summary>
-    /// Обновление состояния кнопок.
-    /// </summary>
-    private void UpdateButtons()
-    {
-        CommandManager.InvalidateRequerySuggested();
-    }
-
-    /// <summary>
-    /// Выполнение команды запуска.
-    /// </summary>
     private void ExecuteStart(object? param)
     {
         if (IsLoading || Status == LlamaServiceStatus.Running) return;
 
         IsLoading = true;
-        StatusText = "Запуск службы...";
-
+        StatusText = Loc.T("Service.Status.Starting");
         try
         {
-            var result = _controller.Start();
-            UpdateFromResult(result);
-
-            if (!result.Success && result.Message.Contains("администратора", StringComparison.OrdinalIgnoreCase))
-            {
-                // Нужно предложить перезапуск с правами администратора
-                StatusText = $"⚠️ {result.Message}";
-                Status = LlamaServiceStatus.Stopped;
-            }
+            WriteLaunchConfigIfNeeded();
+            var result = _serviceManager.Start();
+            ApplyResult(result);
         }
         catch (Exception ex)
         {
-            StatusText = $"Ошибка запуска: {ex.Message}";
+            StatusText = $"{Loc.T("Service.Status.Error")}: {ex.Message}";
         }
         finally
         {
@@ -266,28 +260,22 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
         }
     }
 
-    /// <summary>
-    /// Проверка возможности запуска.
-    /// </summary>
-    private bool CanExecuteStart(object? param) => !IsLoading && Status != LlamaServiceStatus.Running;
+    private bool CanExecuteStart(object? param) => CanStart;
 
-    /// <summary>
-    /// Выполнение команды остановки.
-    /// </summary>
     private void ExecuteStop(object? param)
     {
         if (IsLoading || Status != LlamaServiceStatus.Running) return;
 
         IsLoading = true;
-        StatusText = "Остановка службы...";
+        StatusText = Loc.T("Service.Status.Stopping");
         try
         {
-            var result = _controller.Stop();
-            UpdateFromResult(result);
+            var result = _serviceManager.Stop();
+            ApplyResult(result);
         }
         catch (Exception ex)
         {
-            StatusText = $"Ошибка остановки: {ex.Message}";
+            StatusText = $"{Loc.T("Service.Status.Error")}: {ex.Message}";
         }
         finally
         {
@@ -295,28 +283,23 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
         }
     }
 
-    /// <summary>
-    /// Проверка возможности остановки.
-    /// </summary>
-    private bool CanExecuteStop(object? param) => !IsLoading && Status == LlamaServiceStatus.Running;
+    private bool CanExecuteStop(object? param) => CanStop;
 
-    /// <summary>
-    /// Выполнение команды перезапуска.
-    /// </summary>
     private void ExecuteRestart(object? param)
     {
         if (IsLoading || Status != LlamaServiceStatus.Running) return;
 
         IsLoading = true;
-        StatusText = "Перезапуск службы...";
+        StatusText = Loc.T("Service.Status.Restarting");
         try
         {
-            var result = _controller.Restart();
-            UpdateFromResult(result);
+            WriteLaunchConfigIfNeeded();
+            var result = _serviceManager.Restart();
+            ApplyResult(result);
         }
         catch (Exception ex)
         {
-            StatusText = $"Ошибка перезапуска: {ex.Message}";
+            StatusText = $"{Loc.T("Service.Status.Error")}: {ex.Message}";
         }
         finally
         {
@@ -324,46 +307,161 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
         }
     }
 
-    /// <summary>
-    /// Проверка возможности перезапуска.
-    /// </summary>
-    private bool CanExecuteRestart(object? param) => !IsLoading && Status == LlamaServiceStatus.Running;
+    private bool CanExecuteRestart(object? param) => CanRestart;
 
-    /// <summary>
-    /// Выполнение команды обновления статуса.
-    /// </summary>
-    private void ExecuteRefresh(object? param)
+    private void ExecuteRefresh(object? param) => _ = LoadStatusAsync();
+
+    private void ExecuteInstall(object? param)
     {
-        _ = LoadStatusAsync();
+        if (IsLoading) return;
+
+        IsLoading = true;
+        StatusText = Loc.T("Service.Status.Installing");
+        try
+        {
+            WriteLaunchConfigIfNeeded();
+            var result = _installer.Install();
+            ApplyResult(result);
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"{Loc.T("Service.Status.Error")}: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
     }
 
+    private bool CanExecuteInstall(object? param) => CanInstall;
+
+    private void ExecuteUninstall(object? param)
+    {
+        if (IsLoading) return;
+
+        IsLoading = true;
+        StatusText = Loc.T("Service.Status.Uninstalling");
+        try
+        {
+            var result = _installer.Uninstall();
+            ApplyResult(result);
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"{Loc.T("Service.Status.Error")}: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private bool CanExecuteUninstall(object? param) => CanUninstall;
+
     /// <summary>
-    /// Выполнение команды повышения прав.
+    /// Если провайдер аргументов задан — пишет конфиг службы с актуальными
+    /// параметрами текущей модели (модель, порт, кэши, контекст и т.д.).
     /// </summary>
+    private void WriteLaunchConfigIfNeeded()
+    {
+        if (_launchArgsProvider is null) return;
+
+        var args = _launchArgsProvider();
+        if (args is null || args.Count == 0) return;
+
+        var llamaServerPath = FindLlamaServerPath();
+        if (string.IsNullOrWhiteSpace(llamaServerPath))
+        {
+            StatusText = $"{Loc.T("Service.Status.Error")}: llama-server.exe не найден в runtimes.";
+            return;
+        }
+
+        _configWriter.Write(llamaServerPath, args);
+    }
+
+    private string FindLlamaServerPath()
+    {
+        var runtimesRoot = Path.Combine(AppContext.BaseDirectory, "data", "runtimes");
+        if (!Directory.Exists(runtimesRoot)) return "";
+
+        try
+        {
+            var candidate = Directory.EnumerateFiles(runtimesRoot, "llama-server.exe", SearchOption.AllDirectories)
+                .OrderByDescending(File.GetLastWriteTimeUtc)
+                .FirstOrDefault();
+            return candidate ?? "";
+        }
+        catch
+        {
+            return "";
+        }
+    }
+
+    private int GetLlamaServerPid()
+    {
+        try
+        {
+            return Process.GetProcessesByName("llama-server")
+                .Select(p => p.Id)
+                .FirstOrDefault();
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
+    private void ApplyResult(LlamaServiceOperationResult result)
+    {
+        if (result.Status != LlamaServiceStatus.Unknown)
+            Status = result.Status;
+
+        StatusText = result.Message;
+
+        if (!result.Success && result.Message.Contains("администратора", StringComparison.OrdinalIgnoreCase))
+        {
+            StatusText = $"⚠️ {result.Message}";
+            Status = LlamaServiceStatus.Stopped;
+
+            // Предлагаем перезапустить приложение с правами администратора
+            var answer = ThemedMessageBox.Show(
+                Loc.T("Service.ElevationPrompt"),
+                Loc.T("Service.PageTitle"),
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+            if (answer == MessageBoxResult.Yes)
+                ExecuteElevate(null);
+            return;
+        }
+
+        ProcessIdText = result.Status == LlamaServiceStatus.Running && GetLlamaServerPid() > 0
+            ? $"PID: {GetLlamaServerPid()}"
+            : "PID: —";
+    }
+
     private static void ExecuteElevate(object? param)
     {
         try
         {
-            var psi = new ProcessStartInfo
+            var psi = new System.Diagnostics.ProcessStartInfo
             {
                 FileName = Environment.ProcessPath ?? System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName ?? Environment.ProcessPath,
                 UseShellExecute = true,
                 Verb = "runas"
             };
+            // Новый процесс стартует с флагом, который пропускает проверку
+            // single-instance мутекса (текущий процесс ещё держит его при завершении).
+            psi.ArgumentList.Add("--elevated-restart");
 
             System.Diagnostics.Process.Start(psi);
-            // Закрываем текущий процесс
             System.Windows.Application.Current.Shutdown();
         }
         catch (Exception ex)
         {
-            Trace.TraceWarning($"Ошибка повышения прав: {ex.Message}");
+            System.Diagnostics.Trace.TraceWarning($"Ошибка повышения прав: {ex.Message}");
         }
     }
 
-    /// <summary>
-    /// Проверка, запущен ли процесс от имени администратора.
-    /// </summary>
     private static bool IsAdministrator()
     {
         try
@@ -408,5 +506,9 @@ public sealed class RelayCommand : ICommand
 
     public void Execute(object? parameter) => _execute(parameter);
 
-    public event EventHandler? CanExecuteChanged;
+    public event EventHandler? CanExecuteChanged
+    {
+        add { CommandManager.RequerySuggested += value; }
+        remove { CommandManager.RequerySuggested -= value; }
+    }
 }

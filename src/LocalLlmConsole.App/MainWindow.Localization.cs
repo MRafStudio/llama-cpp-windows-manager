@@ -63,6 +63,7 @@ public partial class MainWindow
         OverviewNavButton.Content = Localization.Loc.T("Nav.Overview");
         ModelsNavButton.Content = Localization.Loc.T("Nav.Models");
         RuntimesNavButton.Content = Localization.Loc.T("Nav.Runtimes");
+        ServiceNavButton.Content = Localization.Loc.T("Nav.Service");
         SettingsNavButton.Content = Localization.Loc.T("Nav.Settings");
         LifetimeNavButton.Content = Localization.Loc.T("Nav.Lifetime");
         LogsNavButton.Content = Localization.Loc.T("Nav.Logs");

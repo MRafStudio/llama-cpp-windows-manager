@@ -98,11 +98,12 @@ public sealed class ModelLaunchProfileService
             var id = $"default:{model.Id}";
             var port = ModelPortAllocator.NextAvailable(defaults.Port, usedPorts);
             usedPorts.Add(port);
+            var settings = ApplyModelContext(ModelLaunchSettings.FromAppSettings(defaults), model) with { Port = port };
             var created = new NamedModelLaunchProfile(
                 id,
                 model.Id,
                 DefaultProfileName,
-                ModelLaunchSettings.FromAppSettings(defaults) with { Port = port },
+                settings,
                 DateTimeOffset.UtcNow,
                 IsDefault: true);
             await SaveNamedAsync(created);
@@ -119,7 +120,45 @@ public sealed class ModelLaunchProfileService
         if (profile is not null) return profile;
 
         var port = await NextAvailablePortAsync(model.Id, defaults, profileId);
-        return ModelLaunchSettings.FromAppSettings(defaults) with { Port = port };
+        return ApplyModelContext(ModelLaunchSettings.FromAppSettings(defaults), model) with { Port = port };
+    }
+
+    private const int QwenReasoningBudget = 8192;
+    private const int QwenParallelSlots = 2;
+    private const string QwenCustomParameters = "--n-predict 65536";
+
+    private static ModelLaunchSettings ApplyModelContext(ModelLaunchSettings settings, ModelRecord model)
+    {
+        try
+        {
+            var gguf = GgufMetadataReader.TryRead(model.ModelPath);
+            if (gguf.Count == 0)
+                return settings with { ContextSize = AppSettings.DefaultContextSize };
+            var architecture = gguf.TryGetValue("general.architecture", out var architectureValue)
+                ? architectureValue?.ToString() ?? ""
+                : "";
+            var contextLength = ModelCapabilityService.ContextLength(gguf, architecture);
+            settings = contextLength > 0
+                ? settings with { ContextSize = contextLength }
+                : settings with { ContextSize = AppSettings.DefaultContextSize };
+            if (architecture.Contains("qwen", StringComparison.OrdinalIgnoreCase))
+            {
+                settings = settings with
+                {
+                    ReasoningBudget = QwenReasoningBudget,
+                    ParallelSlots = QwenParallelSlots,
+                    CustomParameters = QwenCustomParameters,
+                    FlashAttention = "on"
+                };
+            }
+        }
+        catch
+        {
+            // GGUF metadata is best-effort; keep the configured defaults.
+            settings = settings with { ContextSize = AppSettings.DefaultContextSize };
+        }
+
+        return settings;
     }
 
     public async Task<ModelLaunchSettings?> EnsureAsync(ModelRecord model, AppSettings defaults)

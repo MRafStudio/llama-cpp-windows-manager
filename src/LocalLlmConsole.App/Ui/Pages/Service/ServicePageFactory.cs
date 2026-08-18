@@ -3,6 +3,7 @@ namespace LocalLlmConsole.Ui.Pages.Service;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using LocalLlmConsole.Localization;
 
 /// <summary>
 /// Страница управления службой llama-server.
@@ -34,7 +35,7 @@ public static class ServicePageFactory
         // Заголовок
         var headerText = new TextBlock
         {
-            Text = "Управление службой llama-server",
+            Text = Loc.T("Service.PageTitle"),
             FontSize = 20,
             FontWeight = FontWeights.SemiBold,
             Margin = new Thickness(0, 0, 0, 16)
@@ -44,7 +45,7 @@ public static class ServicePageFactory
         // Статус службы
         var statusLabel = new TextBlock
         {
-            Text = "Статус службы:",
+            Text = Loc.T("Service.StatusLabel"),
             FontSize = 14,
             FontWeight = FontWeights.Medium,
             Margin = new Thickness(0, 0, 0, 4)
@@ -54,7 +55,7 @@ public static class ServicePageFactory
         var statusText = new TextBlock
         {
             Name = "ServiceStatusText",
-            Text = "Загрузка...",
+            Text = Loc.T("Service.Status.Loading"),
             FontSize = 14,
             Foreground = new SolidColorBrush(Colors.Gray),
             Margin = new Thickness(0, 0, 0, 16)
@@ -84,12 +85,13 @@ public static class ServicePageFactory
 
         var startButton = new Button
         {
-            Content = "Запустить службу",
-            Style = (Style)Application.Current.FindResource("PrimaryButton"),
+            Content = Loc.T("Service.StartButton"),
             Width = 160,
+            Height = 34,
             Margin = new Thickness(0, 0, 8, 0),
             IsEnabled = true
         };
+        VisualRole.SetButtonRole(startButton, VisualRole.Primary);
         var startCommandBinding = new System.Windows.Data.Binding("StartCommand")
         {
             Source = request.ViewModel,
@@ -105,12 +107,13 @@ public static class ServicePageFactory
 
         var stopButton = new Button
         {
-            Content = "Остановить службу",
-            Style = (Style)Application.Current.FindResource("DangerButton"),
+            Content = Loc.T("Service.StopButton"),
             Width = 160,
+            Height = 34,
             Margin = new Thickness(0, 0, 8, 0),
             IsEnabled = true
         };
+        VisualRole.SetButtonRole(stopButton, VisualRole.Danger);
         var stopCommandBinding = new System.Windows.Data.Binding("StopCommand")
         {
             Source = request.ViewModel,
@@ -126,11 +129,13 @@ public static class ServicePageFactory
 
         var restartButton = new Button
         {
-            Content = "Перезапустить",
-            Style = (Style)Application.Current.FindResource("SecondaryButton"),
+            Content = Loc.T("Service.RestartButton"),
             Width = 160,
+            Height = 34,
+            Margin = new Thickness(0, 0, 8, 0),
             IsEnabled = true
         };
+        VisualRole.SetButtonRole(restartButton, VisualRole.Quiet);
         var restartCommandBinding = new System.Windows.Data.Binding("RestartCommand")
         {
             Source = request.ViewModel,
@@ -149,6 +154,66 @@ public static class ServicePageFactory
         buttonPanel.Children.Add(restartButton);
         root.Children.Add(buttonPanel);
 
+        // Раздел установки / удаления службы
+        var installHeader = new TextBlock
+        {
+            Text = Loc.T("Service.InstallSection"),
+            FontSize = 16,
+            FontWeight = FontWeights.SemiBold,
+            Margin = new Thickness(0, 0, 0, 8)
+        };
+        root.Children.Add(installHeader);
+
+        var installPanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 16) };
+
+        var installButton = new Button
+        {
+            Content = Loc.T("Service.InstallButton"),
+            Width = 160,
+            Height = 34,
+            Margin = new Thickness(0, 0, 8, 0),
+            IsEnabled = true
+        };
+        VisualRole.SetButtonRole(installButton, VisualRole.Primary);
+        var installCommandBinding = new System.Windows.Data.Binding("InstallCommand")
+        {
+            Source = request.ViewModel,
+            Mode = System.Windows.Data.BindingMode.OneWay
+        };
+        installButton.SetBinding(Button.CommandProperty, installCommandBinding);
+        var installEnabledBinding = new System.Windows.Data.Binding("CanInstall")
+        {
+            Source = request.ViewModel,
+            Mode = System.Windows.Data.BindingMode.OneWay
+        };
+        installButton.SetBinding(Button.IsEnabledProperty, installEnabledBinding);
+
+        var uninstallButton = new Button
+        {
+            Content = Loc.T("Service.UninstallButton"),
+            Width = 160,
+            Height = 34,
+            Margin = new Thickness(0, 0, 8, 0),
+            IsEnabled = true
+        };
+        VisualRole.SetButtonRole(uninstallButton, VisualRole.Danger);
+        var uninstallCommandBinding = new System.Windows.Data.Binding("UninstallCommand")
+        {
+            Source = request.ViewModel,
+            Mode = System.Windows.Data.BindingMode.OneWay
+        };
+        uninstallButton.SetBinding(Button.CommandProperty, uninstallCommandBinding);
+        var uninstallEnabledBinding = new System.Windows.Data.Binding("CanUninstall")
+        {
+            Source = request.ViewModel,
+            Mode = System.Windows.Data.BindingMode.OneWay
+        };
+        uninstallButton.SetBinding(Button.IsEnabledProperty, uninstallEnabledBinding);
+
+        installPanel.Children.Add(installButton);
+        installPanel.Children.Add(uninstallButton);
+        root.Children.Add(installPanel);
+
         // Разделитель
         var separator = new Separator
         {
@@ -161,9 +226,7 @@ public static class ServicePageFactory
         // Описание
         var descriptionText = new TextBlock
         {
-            Text = "Служба позволяет запускать llama-server в фоновом режиме как Windows-службу. " +
-                   "Это обеспечивает автоматический перезапуск при сбоях и независимость от GUI приложения.\n\n" +
-                   "Изменения параметров требуют ручного перезапуска службы через кнопку 'Перезапустить'.",
+            Text = Loc.T("Service.Description"),
             FontSize = 12,
             Foreground = new SolidColorBrush(Colors.DarkGray),
             TextWrapping = TextWrapping.Wrap,
@@ -174,7 +237,7 @@ public static class ServicePageFactory
         // Ошибки
         var errorLabel = new TextBlock
         {
-            Text = "Сообщения:",
+            Text = Loc.T("Service.MessagesLabel"),
             FontSize = 14,
             FontWeight = FontWeights.Medium,
             Margin = new Thickness(0, 0, 0, 4)
@@ -210,6 +273,8 @@ public static class ServicePageFactory
         DockPanel.SetDock(statusLabel, Dock.Top);
         DockPanel.SetDock(statusText, Dock.Top);
         DockPanel.SetDock(buttonPanel, Dock.Top);
+        DockPanel.SetDock(installHeader, Dock.Top);
+        DockPanel.SetDock(installPanel, Dock.Top);
         DockPanel.SetDock(separator, Dock.Top);
         DockPanel.SetDock(descriptionText, Dock.Top);
         DockPanel.SetDock(errorLabel, Dock.Top);

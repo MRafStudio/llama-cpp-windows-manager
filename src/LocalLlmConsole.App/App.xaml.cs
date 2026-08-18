@@ -23,7 +23,8 @@ public partial class App : System.Windows.Application
             return;
         }
 
-        if (!_singleInstance.TryAcquire(SingleInstanceMutexName))
+        if (!_singleInstance.TryAcquire(SingleInstanceMutexName)
+            && !e.Args.Contains("--elevated-restart", StringComparer.OrdinalIgnoreCase))
         {
             _dialogs.Notify(null, "llama.cpp Windows Manager is already running.", "llama.cpp Windows Manager", MessageBoxImage.Information);
             Shutdown();
