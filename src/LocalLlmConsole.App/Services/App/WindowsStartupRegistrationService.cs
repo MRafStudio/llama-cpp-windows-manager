@@ -1,5 +1,7 @@
 namespace LocalLlmConsole.Services;
 
+using System.Globalization;
+
 public sealed record WindowsStartupRegistrationResult(
     bool Success,
     string StatusMessage);
@@ -13,6 +15,19 @@ public sealed class WindowsStartupRegistrationService
     private readonly Action<string> _writeStartupCommand;
     private readonly Action _deleteStartupCommand;
     private readonly Func<string> _executablePath;
+
+    // Маппинг системных локалей на доступные языки приложения
+    private static readonly Dictionary<string, string> _cultureToLanguage = new(StringComparer.OrdinalIgnoreCase)
+    {
+        { "ru", "ru" }, { "uk", "ru" }, { "be", "ru" }, // Славянские → русский
+        { "en", "en" }, { "de", "de" }, { "fr", "fr" },
+        { "es", "es" }, { "pt", "pt" }, { "it", "it" },
+        { "ja", "ja" }, { "ko", "ko" }, { "zh", "zh" },
+        { "tr", "tr" }, { "fa", "fa" }, { "pl", "pl" },
+        { "nl", "nl" }, { "vi", "vi" }, { "ar", "ar" },
+        { "hi", "hi" }, { "id", "id" }, { "sv", "sv" },
+        { "bg", "bg" }, { "cs", "cs" }
+    };
 
     public WindowsStartupRegistrationService()
         : this(
@@ -41,11 +56,57 @@ public sealed class WindowsStartupRegistrationService
 
         try
         {
-            return settings with { StartWithWindows = IsEnabled() };
+            var updated = settings with { StartWithWindows = IsEnabled() };
+
+            // Если язык явно не установлен (дефолтный "en"), попробуем определить системный
+            if (!string.IsNullOrWhiteSpace(settings.UiCulture) &&
+                string.Equals(settings.UiCulture, "en", StringComparison.OrdinalIgnoreCase))
+            {
+                var systemLang = ResolveSystemLanguage();
+                if (!string.Equals(systemLang, "en", StringComparison.OrdinalIgnoreCase))
+                {
+                    updated = updated with { UiCulture = systemLang };
+                }
+            }
+
+            return updated;
         }
         catch
         {
             return settings;
+        }
+    }
+
+    /// <summary>Определяет язык системы и маппит на доступный язык приложения.</summary>
+    private static string ResolveSystemLanguage()
+    {
+        try
+        {
+            // 1. Текущий UI культуры Windows
+            var culture = CultureInfo.CurrentUICulture;
+            var cultureName = culture.Name; // "ru-RU", "en-US", etc.
+            var twoLetter = culture.TwoLetterISOLanguageName.ToLowerInvariant(); // "ru", "en", etc.
+
+            // Сначала ищем по полному имени, потом по двухбуквенному коду
+            if (_cultureToLanguage.TryGetValue(cultureName, out var lang))
+                return lang;
+            if (_cultureToLanguage.TryGetValue(twoLetter, out lang))
+                return lang;
+
+            // Для китайского: проверяем регион
+            if (twoLetter == "zh")
+            {
+                var region = culture.TwoLetterISOLanguageName;
+                if (cultureName.Contains("CN") || cultureName.Contains("TW") || cultureName.Contains("HK"))
+                    return "zh";
+            }
+
+            // fallback — English
+            return "en";
+        }
+        catch
+        {
+            return "en";
         }
     }
 

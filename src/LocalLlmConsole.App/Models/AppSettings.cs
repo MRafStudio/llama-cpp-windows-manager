@@ -75,7 +75,7 @@ public sealed record AppSettings(
     int ContextCheckpointCount = 32,
     int ContextCheckpointEveryNTokens = 256,
     string CustomParameters = "",
-    string UiCulture = "ru",
+    string UiCulture = "en",
     string GpuMode = "auto",
     string GpuDevices = "",
     string GpuSplit = "",
