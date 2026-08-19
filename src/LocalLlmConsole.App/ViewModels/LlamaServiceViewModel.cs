@@ -25,6 +25,8 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
     private LlamaServiceStatus _status;
     private string _statusText = string.Empty;
     private string _processIdText = string.Empty;
+    private string _lastMessage = string.Empty;
+    private bool _hasError;
     private string _llamaServerPathText = string.Empty;
     private bool _isLoading;
     private bool _isElevated;
@@ -42,6 +44,8 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
                 OnPropertyChanged(nameof(CanStart));
                 OnPropertyChanged(nameof(CanStop));
                 OnPropertyChanged(nameof(CanRestart));
+                OnPropertyChanged(nameof(ServiceStatus));
+                OnPropertyChanged(nameof(ServiceStatusColor));
                 UpdateButtons();
             }
         }
@@ -59,6 +63,88 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
             }
         }
     }
+
+    /// <summary>
+    /// Текст статуса службы: установлена/не установлена, запущена/остановлена.
+    /// </summary>
+    public string ServiceStatus
+    {
+        get
+        {
+            if (!_isInstalled) return Loc.T("Service.Status.NotInstalled");
+            return _status switch
+            {
+                LlamaServiceStatus.Running => Loc.T("Service.Status.Running"),
+                LlamaServiceStatus.Starting => Loc.T("Service.Status.Starting"),
+                LlamaServiceStatus.Stopping => Loc.T("Service.Status.Stopping"),
+                LlamaServiceStatus.Stopped => Loc.T("Service.Status.Stopped"),
+                _ => Loc.T("Service.Status.Unknown")
+            };
+        }
+    }
+
+    /// <summary>
+    /// Цвет статуса: зелёный — работает, жёлтый — переходные состояния,
+    /// красный — не установлена/ошибка, серый — остановлена.
+    /// </summary>
+    public System.Windows.Media.Brush ServiceStatusColor
+    {
+        get
+        {
+            if (!_isInstalled) return ThemeBrush("Danger");
+            return _status switch
+            {
+                LlamaServiceStatus.Running => ThemeBrush("Success"),
+                LlamaServiceStatus.Starting or LlamaServiceStatus.Stopping => ThemeBrush("Warning"),
+                LlamaServiceStatus.Stopped => ThemeBrush("TextMuted"),
+                _ => ThemeBrush("TextMuted")
+            };
+        }
+    }
+
+    /// <summary>
+    /// Последнее сообщение операции (результат установки/удаления/запуска,
+    /// ошибка, рекомендация).
+    /// </summary>
+    public string LastMessage
+    {
+        get => _lastMessage;
+        private set
+        {
+            if (_lastMessage != value)
+            {
+                _lastMessage = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Имеется ли ошибка в последнем сообщении (красный цвет сообщения).
+    /// </summary>
+    public bool HasError
+    {
+        get => _hasError;
+        private set
+        {
+            if (_hasError != value)
+            {
+                _hasError = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    private void SetError(string message)
+    {
+        StatusText = message;
+        LastMessage = message;
+        HasError = true;
+    }
+
+    private static System.Windows.Media.Brush ThemeBrush(string key)
+        => System.Windows.Application.Current?.TryFindResource(key) as System.Windows.Media.Brush
+           ?? System.Windows.Media.Brushes.Gray;
 
     public string ProcessIdText
     {
@@ -134,6 +220,8 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
                 OnPropertyChanged(nameof(CanRestart));
                 OnPropertyChanged(nameof(CanInstall));
                 OnPropertyChanged(nameof(CanUninstall));
+                OnPropertyChanged(nameof(ServiceStatus));
+                OnPropertyChanged(nameof(ServiceStatusColor));
             }
         }
     }
@@ -212,6 +300,8 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
             if (!IsInstalled)
             {
                 StatusText = Loc.T("Service.Status.NotInstalled");
+                LastMessage = Loc.T("Service.Hint.NotInstalled");
+                HasError = false;
                 Status = LlamaServiceStatus.Stopped;
                 return;
             }
@@ -224,11 +314,13 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
                 LlamaServiceStatus.Stopped => Loc.T("Service.Status.Stopped"),
                 _ => Loc.T("Service.Status.Unknown")
             };
+            LastMessage = Loc.T("Service.Hint.Installed");
+            HasError = false;
             ProcessIdText = status == LlamaServiceStatus.Running ? $"PID: {GetLlamaServerPid()}" : "PID: —";
         }
         catch (Exception ex)
         {
-            StatusText = $"{Loc.T("Service.Status.Error")}: {ex.Message}";
+            SetError($"{Loc.T("Service.Status.Error")}: {ex.Message}");
         }
         finally
         {
@@ -246,13 +338,18 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
         StatusText = Loc.T("Service.Status.Starting");
         try
         {
-            WriteLaunchConfigIfNeeded();
+            // Конфиг службы не записан — запускать нельзя (служба упадёт)
+            if (!WriteLaunchConfigIfNeeded())
+            {
+                IsLoading = false;
+                return;
+            }
             var result = _serviceManager.Start();
             ApplyResult(result);
         }
         catch (Exception ex)
         {
-            StatusText = $"{Loc.T("Service.Status.Error")}: {ex.Message}";
+            SetError($"{Loc.T("Service.Status.Error")}: {ex.Message}");
         }
         finally
         {
@@ -275,7 +372,7 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            StatusText = $"{Loc.T("Service.Status.Error")}: {ex.Message}";
+            SetError($"{Loc.T("Service.Status.Error")}: {ex.Message}");
         }
         finally
         {
@@ -299,7 +396,7 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            StatusText = $"{Loc.T("Service.Status.Error")}: {ex.Message}";
+            SetError($"{Loc.T("Service.Status.Error")}: {ex.Message}");
         }
         finally
         {
@@ -319,13 +416,16 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
         StatusText = Loc.T("Service.Status.Installing");
         try
         {
-            WriteLaunchConfigIfNeeded();
+            // Установка не требует параметров модели — служба просто создаётся.
+            // Параметры понадобятся при запуске (WriteLaunchConfigIfNeeded в ExecuteStart).
             var result = _installer.Install();
             ApplyResult(result);
+            // Обновляем состояние установки, чтобы кнопки переключились
+            IsInstalled = _serviceManager.IsInstalled();
         }
         catch (Exception ex)
         {
-            StatusText = $"{Loc.T("Service.Status.Error")}: {ex.Message}";
+            SetError($"{Loc.T("Service.Status.Error")}: {ex.Message}");
         }
         finally
         {
@@ -345,10 +445,12 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
         {
             var result = _installer.Uninstall();
             ApplyResult(result);
+            // Обновляем состояние установки, чтобы кнопки переключились
+            IsInstalled = _serviceManager.IsInstalled();
         }
         catch (Exception ex)
         {
-            StatusText = $"{Loc.T("Service.Status.Error")}: {ex.Message}";
+            SetError($"{Loc.T("Service.Status.Error")}: {ex.Message}");
         }
         finally
         {
@@ -361,22 +463,29 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
     /// <summary>
     /// Если провайдер аргументов задан — пишет конфиг службы с актуальными
     /// параметрами текущей модели (модель, порт, кэши, контекст и т.д.).
+    /// Возвращает true, если конфиг записан. При неудаче выводит ошибку
+    /// и возвращает false — операцию (запуск/установку) продолжать нельзя.
     /// </summary>
-    private void WriteLaunchConfigIfNeeded()
+    private bool WriteLaunchConfigIfNeeded()
     {
-        if (_launchArgsProvider is null) return;
+        if (_launchArgsProvider is null) return true;
 
         var args = _launchArgsProvider();
-        if (args is null || args.Count == 0) return;
+        if (args is null || args.Count == 0)
+        {
+            SetError($"{Loc.T("Service.Status.Error")}: не удалось получить параметры запуска службы. Выберите модель на странице «Модели» и среду выполнения на странице «Среда выполнения», затем повторите.");
+            return false;
+        }
 
         var llamaServerPath = FindLlamaServerPath();
         if (string.IsNullOrWhiteSpace(llamaServerPath))
         {
-            StatusText = $"{Loc.T("Service.Status.Error")}: llama-server.exe не найден в runtimes.";
-            return;
+            SetError($"{Loc.T("Service.Status.Error")}: llama-server.exe не найден в runtimes.");
+            return false;
         }
 
         _configWriter.Write(llamaServerPath, args);
+        return true;
     }
 
     private string FindLlamaServerPath()
@@ -413,10 +522,16 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
 
     private void ApplyResult(LlamaServiceOperationResult result)
     {
+        // При ошибке операции статус должен отражать реальное состояние,
+        // а не зависать в переходном (Запуск/Остановка).
         if (result.Status != LlamaServiceStatus.Unknown)
             Status = result.Status;
+        else if (!result.Success)
+            Status = LlamaServiceStatus.Stopped;
 
         StatusText = result.Message;
+        LastMessage = result.Message;
+        HasError = !result.Success;
 
         if (!result.Success && result.Message.Contains("администратора", StringComparison.OrdinalIgnoreCase))
         {

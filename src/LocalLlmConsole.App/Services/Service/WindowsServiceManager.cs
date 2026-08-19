@@ -72,7 +72,8 @@ public sealed class WindowsServiceManager
         }
         catch (Exception ex)
         {
-            return new LlamaServiceOperationResult(false, $"Ошибка запуска службы: {ex.Message}", LlamaServiceStatus.Starting);
+            // Служба не запустилась — статус должен быть Stopped, а не Starting
+            return new LlamaServiceOperationResult(false, $"Ошибка запуска службы: {ex.Message}", LlamaServiceStatus.Stopped);
         }
     }
 

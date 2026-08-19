@@ -121,9 +121,13 @@ public partial class MainWindow
     {
         try
         {
+            // Только выбранная модель — никаких фоллбэков.
+            // Подстановка "левой" модели с неправильными параметрами опасна:
+            // служба может использоваться агентом. Лучше честная ошибка.
             var model = SelectedModel();
             if (model is null) return Array.Empty<string>();
 
+            // Только выбранный runtime — никаких фоллбэков.
             var runtime = SelectedRuntime();
             if (runtime is null) return Array.Empty<string>();
 

@@ -826,6 +826,8 @@
   "Service.Status.Stopped": "Stopped",
   "Service.Status.NotInstalled": "Service is not installed.",
   "Service.Status.Unknown": "Unknown",
+  "Service.Hint.NotInstalled": "Service is not installed. Click 'Install Service' to create it.",
+  "Service.Hint.Installed": "Service is installed. Click 'Start Service' to launch llama-server.",
   "Service.Status.Starting": "Starting...",
   "Service.Status.Stopping": "Stopping...",
   "Service.Status.Restarting": "Restarting service...",

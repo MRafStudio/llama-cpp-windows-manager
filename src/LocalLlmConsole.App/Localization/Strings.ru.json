@@ -826,6 +826,8 @@
   "Service.Status.Stopped": "Остановлена",
   "Service.Status.NotInstalled": "Служба не установлена.",
   "Service.Status.Unknown": "Неизвестно",
+  "Service.Hint.NotInstalled": "Служба не установлена. Нажмите «Установить службу», чтобы создать её.",
+  "Service.Hint.Installed": "Служба установлена. Нажмите «Запустить службу», чтобы запустить llama-server.",
   "Service.Status.Starting": "Запуск...",
   "Service.Status.Stopping": "Остановка...",
   "Service.Status.Restarting": "Перезапуск службы...",

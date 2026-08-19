@@ -18,9 +18,9 @@ public static class WindowsServiceInstaller
         }
 
         var create = RunSc("create", LlamaServerWindowsService.Name,
-            $"binPath= \"{exePath}\"",
-            "start= auto",
-            $"DisplayName= \"{LlamaServerWindowsService.DisplayName}\"");
+            "binPath=", exePath,
+            "start=", "auto",
+            "DisplayName=", LlamaServerWindowsService.BuildDisplayName());
         if (create != 0)
         {
             Console.Error.WriteLine("Не удалось создать службу. Возможно, она уже установлена.");
@@ -28,7 +28,7 @@ public static class WindowsServiceInstaller
         }
 
         RunSc("description", LlamaServerWindowsService.Name,
-            $"\"{LlamaServerWindowsService.Description}\"");
+            LlamaServerWindowsService.BuildDescription());
 
         Console.WriteLine($"Служба {LlamaServerWindowsService.Name} установлена.");
         return 0;

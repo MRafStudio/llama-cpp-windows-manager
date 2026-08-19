@@ -262,7 +262,8 @@ public static class ServicePageFactory
         var isErrorBinding = new System.Windows.Data.Binding("HasError")
         {
             Source = request.ViewModel,
-            Mode = System.Windows.Data.BindingMode.OneWay
+            Mode = System.Windows.Data.BindingMode.OneWay,
+            Converter = new System.Windows.Controls.BooleanToVisibilityConverter()
         };
         errorText.SetBinding(TextBlock.VisibilityProperty, isErrorBinding);
 

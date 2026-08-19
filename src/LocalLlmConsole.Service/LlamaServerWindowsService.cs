@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.ServiceProcess;
 using System.Text.Json;
 
@@ -12,8 +13,29 @@ namespace LocalLlmConsole.Service;
 public sealed class LlamaServerWindowsService : ServiceBase
 {
     public const string Name = "llama-cpp-server";
-    public const string DisplayName = "llama.cpp Server Service";
-    public const string Description = "llama.cpp server running as a Windows service. Manages model serving independently of the desktop application.";
+
+    /// <summary>
+    /// Отображаемое имя службы: "Llama.cpp (путь к папке службы без имени файла)".
+    /// </summary>
+    public static string BuildDisplayName()
+    {
+        var baseDir = AppContext.BaseDirectory?.TrimEnd('\\', '/') ?? "";
+        var folder = Path.GetDirectoryName(baseDir) ?? baseDir;
+        return string.IsNullOrWhiteSpace(folder) ? "Llama.cpp" : $"Llama.cpp ({folder})";
+    }
+
+    /// <summary>
+    /// Локалезависимое описание службы: русское на системах с RU-локалью,
+    /// английское на остальных.
+    /// </summary>
+    public static string BuildDescription()
+    {
+        var isRussian = CultureInfo.InstalledUICulture.TwoLetterISOLanguageName
+            .Equals("ru", StringComparison.OrdinalIgnoreCase);
+        return isRussian
+            ? "Служба сервера моделей llama.cpp."
+            : "llama.cpp model server service.";
+    }
 
     private Process? _process;
     private readonly object _processLock = new();
