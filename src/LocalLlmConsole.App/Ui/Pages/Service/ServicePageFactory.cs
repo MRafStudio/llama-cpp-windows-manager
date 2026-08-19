@@ -26,6 +26,27 @@ public sealed record ServicePageBuildResult(
 
 public static class ServicePageFactory
 {
+    /// <summary>
+    /// Создаёт ComboBox с ItemTemplate, привязанным к указанному свойству.
+    /// ItemTemplate применяется и к выбранному элементу в свёрнутом поле
+    /// (в отличие от DisplayMemberPath, который работает только в списке).
+    /// </summary>
+    private static ComboBox CreateServiceCombo(string displayPath)
+    {
+        var template = new System.Windows.DataTemplate();
+        var factory = new FrameworkElementFactory(typeof(TextBlock));
+        factory.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding(displayPath));
+        template.VisualTree = factory;
+
+        return new ComboBox
+        {
+            MinWidth = 340,
+            MaxWidth = 480,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            ItemTemplate = template
+        };
+    }
+
     public static ServicePageBuildResult Create(ServicePageRequest request)
     {
         ArgumentNullException.ThrowIfNull(request.ViewModel);
@@ -79,6 +100,80 @@ public static class ServicePageFactory
         statusText.SetBinding(TextBlock.ForegroundProperty, colorBinding);
 
         root.Children.Add(statusText);
+
+        // --- Выбор параметров запуска службы: модель / профиль / среда ---
+        var selectionPanel = new StackPanel { Margin = new Thickness(0, 0, 0, 16) };
+
+        var selectionLabel = new TextBlock
+        {
+            Text = Loc.T("Service.SelectionLabel"),
+            FontSize = 14,
+            FontWeight = FontWeights.Medium,
+            Margin = new Thickness(0, 0, 0, 4)
+        };
+        selectionPanel.Children.Add(selectionLabel);
+
+        // Модель
+        selectionPanel.Children.Add(new TextBlock
+        {
+            Text = Loc.T("Service.ModelLabel"),
+            FontSize = 12,
+            Margin = new Thickness(0, 6, 0, 2)
+        });
+        var modelCombo = CreateServiceCombo("Name");
+        modelCombo.SetBinding(ComboBox.ItemsSourceProperty, new System.Windows.Data.Binding("Models")
+        {
+            Source = request.ViewModel,
+            Mode = System.Windows.Data.BindingMode.OneWay
+        });
+        modelCombo.SetBinding(ComboBox.SelectedItemProperty, new System.Windows.Data.Binding("SelectedModel")
+        {
+            Source = request.ViewModel,
+            Mode = System.Windows.Data.BindingMode.TwoWay
+        });
+        selectionPanel.Children.Add(modelCombo);
+
+        // Профиль
+        selectionPanel.Children.Add(new TextBlock
+        {
+            Text = Loc.T("Service.ProfileLabel"),
+            FontSize = 12,
+            Margin = new Thickness(0, 6, 0, 2)
+        });
+        var profileCombo = CreateServiceCombo("Name");
+        profileCombo.SetBinding(ComboBox.ItemsSourceProperty, new System.Windows.Data.Binding("Profiles")
+        {
+            Source = request.ViewModel,
+            Mode = System.Windows.Data.BindingMode.OneWay
+        });
+        profileCombo.SetBinding(ComboBox.SelectedItemProperty, new System.Windows.Data.Binding("SelectedProfile")
+        {
+            Source = request.ViewModel,
+            Mode = System.Windows.Data.BindingMode.TwoWay
+        });
+        selectionPanel.Children.Add(profileCombo);
+
+        // Среда выполнения
+        selectionPanel.Children.Add(new TextBlock
+        {
+            Text = Loc.T("Service.RuntimeLabel"),
+            FontSize = 12,
+            Margin = new Thickness(0, 6, 0, 2)
+        });
+        var runtimeCombo = CreateServiceCombo("Name");
+        runtimeCombo.SetBinding(ComboBox.ItemsSourceProperty, new System.Windows.Data.Binding("Runtimes")
+        {
+            Source = request.ViewModel,
+            Mode = System.Windows.Data.BindingMode.OneWay
+        });
+        runtimeCombo.SetBinding(ComboBox.SelectedItemProperty, new System.Windows.Data.Binding("SelectedRuntime")
+        {
+            Source = request.ViewModel,
+            Mode = System.Windows.Data.BindingMode.TwoWay
+        });
+        selectionPanel.Children.Add(runtimeCombo);
+
+        root.Children.Add(selectionPanel);
 
         // Кнопки управления
         var buttonPanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 16) };
@@ -273,6 +368,7 @@ public static class ServicePageFactory
         DockPanel.SetDock(headerText, Dock.Top);
         DockPanel.SetDock(statusLabel, Dock.Top);
         DockPanel.SetDock(statusText, Dock.Top);
+        DockPanel.SetDock(selectionPanel, Dock.Top);
         DockPanel.SetDock(buttonPanel, Dock.Top);
         DockPanel.SetDock(installHeader, Dock.Top);
         DockPanel.SetDock(installPanel, Dock.Top);

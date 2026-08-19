@@ -20,7 +20,17 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
     private readonly WindowsServiceManager _serviceManager;
     private readonly WindowsServiceInstallerClient _installer;
     private readonly ServiceLaunchConfigWriter _configWriter;
-    private readonly Func<IReadOnlyList<string>>? _launchArgsProvider;
+    private readonly Func<Task<IReadOnlyList<LocalLlmConsole.Models.ModelRecord>>> _loadModels;
+    private readonly Func<LocalLlmConsole.Models.ModelRecord, Task<IReadOnlyList<LocalLlmConsole.Models.NamedModelLaunchProfile>>> _loadProfiles;
+    private readonly Func<Task<IReadOnlyList<LocalLlmConsole.Models.RuntimeRecord>>> _loadRuntimes;
+    private readonly Func<LocalLlmConsole.Models.ModelRecord, string, LocalLlmConsole.Models.RuntimeRecord, IReadOnlyList<string>> _buildLaunchArgs;
+
+    private IReadOnlyList<LocalLlmConsole.Models.ModelRecord> _models = [];
+    private LocalLlmConsole.Models.ModelRecord? _selectedModel;
+    private IReadOnlyList<LocalLlmConsole.Models.NamedModelLaunchProfile> _profiles = [];
+    private LocalLlmConsole.Models.NamedModelLaunchProfile? _selectedProfile;
+    private IReadOnlyList<LocalLlmConsole.Models.RuntimeRecord> _runtimes = [];
+    private LocalLlmConsole.Models.RuntimeRecord? _selectedRuntime;
 
     private LlamaServiceStatus _status;
     private string _statusText = string.Empty;
@@ -259,20 +269,93 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
     public ICommand InstallCommand { get; }
     public ICommand UninstallCommand { get; }
 
+    /// <summary>Установленные модели (для выпадающего списка).</summary>
+    public IReadOnlyList<LocalLlmConsole.Models.ModelRecord> Models
+    {
+        get => _models;
+        private set { _models = value; OnPropertyChanged(); }
+    }
+
+    /// <summary>Выбранная модель службы.</summary>
+    public LocalLlmConsole.Models.ModelRecord? SelectedModel
+    {
+        get => _selectedModel;
+        set
+        {
+            if (!ReferenceEquals(_selectedModel, value))
+            {
+                _selectedModel = value;
+                OnPropertyChanged();
+                _ = RefreshProfilesAsync();
+                SaveSelection();
+            }
+        }
+    }
+
+    /// <summary>Профили запуска выбранной модели.</summary>
+    public IReadOnlyList<LocalLlmConsole.Models.NamedModelLaunchProfile> Profiles
+    {
+        get => _profiles;
+        private set { _profiles = value; OnPropertyChanged(); }
+    }
+
+    /// <summary>Выбранный профиль запуска.</summary>
+    public LocalLlmConsole.Models.NamedModelLaunchProfile? SelectedProfile
+    {
+        get => _selectedProfile;
+        set
+        {
+            if (!ReferenceEquals(_selectedProfile, value))
+            {
+                _selectedProfile = value;
+                OnPropertyChanged();
+                SaveSelection();
+            }
+        }
+    }
+
+    /// <summary>Установленные среды выполнения (для выпадающего списка).</summary>
+    public IReadOnlyList<LocalLlmConsole.Models.RuntimeRecord> Runtimes
+    {
+        get => _runtimes;
+        private set { _runtimes = value; OnPropertyChanged(); }
+    }
+
+    /// <summary>Выбранная среда выполнения.</summary>
+    public LocalLlmConsole.Models.RuntimeRecord? SelectedRuntime
+    {
+        get => _selectedRuntime;
+        set
+        {
+            if (!ReferenceEquals(_selectedRuntime, value))
+            {
+                _selectedRuntime = value;
+                OnPropertyChanged();
+                SaveSelection();
+            }
+        }
+    }
+
     public LlamaServiceViewModel(
         WindowsServiceManager serviceManager,
         WindowsServiceInstallerClient installer,
         ServiceLaunchConfigWriter configWriter,
         Action<string> setStatus,
         Func<string, Task> setStatusAsync,
-        Func<IReadOnlyList<string>>? launchArgsProvider = null)
+        Func<Task<IReadOnlyList<LocalLlmConsole.Models.ModelRecord>>> loadModels,
+        Func<LocalLlmConsole.Models.ModelRecord, Task<IReadOnlyList<LocalLlmConsole.Models.NamedModelLaunchProfile>>> loadProfiles,
+        Func<Task<IReadOnlyList<LocalLlmConsole.Models.RuntimeRecord>>> loadRuntimes,
+        Func<LocalLlmConsole.Models.ModelRecord, string, LocalLlmConsole.Models.RuntimeRecord, IReadOnlyList<string>> buildLaunchArgs)
     {
         _serviceManager = serviceManager ?? throw new ArgumentNullException(nameof(serviceManager));
         _installer = installer ?? throw new ArgumentNullException(nameof(installer));
         _configWriter = configWriter ?? throw new ArgumentNullException(nameof(configWriter));
         _setStatus = setStatus ?? throw new ArgumentNullException(nameof(setStatus));
         _setStatusAsync = setStatusAsync ?? throw new ArgumentNullException(nameof(setStatusAsync));
-        _launchArgsProvider = launchArgsProvider;
+        _loadModels = loadModels ?? throw new ArgumentNullException(nameof(loadModels));
+        _loadProfiles = loadProfiles ?? throw new ArgumentNullException(nameof(loadProfiles));
+        _loadRuntimes = loadRuntimes ?? throw new ArgumentNullException(nameof(loadRuntimes));
+        _buildLaunchArgs = buildLaunchArgs ?? throw new ArgumentNullException(nameof(buildLaunchArgs));
 
         StartCommand = new RelayCommand(ExecuteStart, CanExecuteStart);
         StopCommand = new RelayCommand(ExecuteStop, CanExecuteStop);
@@ -285,6 +368,7 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
         IsElevated = IsAdministrator();
 
         _ = LoadStatusAsync();
+        _ = LoadSelectionsAsync();
     }
 
     private readonly Action<string> _setStatus;
@@ -329,6 +413,80 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
     }
 
     private void UpdateButtons() => CommandManager.InvalidateRequerySuggested();
+
+    /// <summary>
+    /// Загружает установленные модели и среды выполнения, восстанавливает
+    /// сохранённый в конфиге службы выбор (модель/профиль/runtime).
+    /// </summary>
+    private async Task LoadSelectionsAsync()
+    {
+        try
+        {
+            Models = await _loadModels();
+            Runtimes = await _loadRuntimes();
+
+            var saved = _configWriter.Read();
+            SelectedModel = saved is not null && Models.FirstOrDefault(m => m.Id == saved.ModelId) is { } savedModel
+                ? savedModel
+                : Models.FirstOrDefault();
+            SelectedRuntime = saved is not null && Runtimes.FirstOrDefault(r => r.Id == saved.RuntimeId) is { } savedRuntime
+                ? savedRuntime
+                : Runtimes.FirstOrDefault();
+            // Профили загружаются в RefreshProfilesAsync (вызывается из setter SelectedModel)
+        }
+        catch (Exception ex)
+        {
+            SetError($"{Loc.T("Service.Status.Error")}: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Загружает профили запуска выбранной модели, восстанавливает сохранённый профиль.
+    /// </summary>
+    private async Task RefreshProfilesAsync()
+    {
+        var model = SelectedModel;
+        if (model is null)
+        {
+            Profiles = [];
+            SelectedProfile = null;
+            return;
+        }
+
+        try
+        {
+            var profiles = await _loadProfiles(model);
+            Profiles = profiles;
+            var savedId = _configWriter.Read()?.ProfileId;
+            SelectedProfile = profiles.FirstOrDefault(p => p.Id == savedId)
+                              ?? profiles.FirstOrDefault(p => p.IsDefault)
+                              ?? profiles.FirstOrDefault();
+        }
+        catch (Exception ex)
+        {
+            SetError($"{Loc.T("Service.Status.Error")}: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Сохраняет выбранные модель/профиль/runtime в конфиг службы (без аргументов —
+    /// они перезапишутся при запуске). Вызывается при изменении любого из списков.
+    /// </summary>
+    private void SaveSelection()
+    {
+        try
+        {
+            var executable = SelectedRuntime?.ExecutablePath ?? FindLlamaServerPath();
+            _configWriter.Write(executable, [],
+                SelectedModel?.Id ?? "",
+                SelectedProfile?.Id ?? "",
+                SelectedRuntime?.Id ?? "");
+        }
+        catch
+        {
+            // Сохранение выбора — не критично при ошибке
+        }
+    }
 
     private void ExecuteStart(object? param)
     {
@@ -461,30 +619,48 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
     private bool CanExecuteUninstall(object? param) => CanUninstall;
 
     /// <summary>
-    /// Если провайдер аргументов задан — пишет конфиг службы с актуальными
-    /// параметрами текущей модели (модель, порт, кэши, контекст и т.д.).
+    /// Собирает параметры запуска из выбранных на странице службы модели,
+    /// профиля и среды выполнения, пишет конфиг службы.
     /// Возвращает true, если конфиг записан. При неудаче выводит ошибку
-    /// и возвращает false — операцию (запуск/установку) продолжать нельзя.
+    /// и возвращает false — операцию (запуск) продолжать нельзя.
     /// </summary>
     private bool WriteLaunchConfigIfNeeded()
     {
-        if (_launchArgsProvider is null) return true;
+        var model = SelectedModel;
+        if (model is null)
+        {
+            SetError($"{Loc.T("Service.Status.Error")}: не выбрана модель. Выберите модель в списке на странице службы.");
+            return false;
+        }
 
-        var args = _launchArgsProvider();
+        var profile = SelectedProfile;
+        if (profile is null)
+        {
+            SetError($"{Loc.T("Service.Status.Error")}: не выбран профиль запуска. Выберите профиль для модели {model.Name}.");
+            return false;
+        }
+
+        var runtime = SelectedRuntime;
+        if (runtime is null)
+        {
+            SetError($"{Loc.T("Service.Status.Error")}: не выбрана среда выполнения. Выберите среду в списке на странице службы.");
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(runtime.ExecutablePath) || !File.Exists(runtime.ExecutablePath))
+        {
+            SetError($"{Loc.T("Service.Status.Error")}: llama-server не найден в выбранной среде выполнения: {runtime.ExecutablePath}");
+            return false;
+        }
+
+        var args = _buildLaunchArgs(model, profile.Id, runtime);
         if (args is null || args.Count == 0)
         {
-            SetError($"{Loc.T("Service.Status.Error")}: не удалось получить параметры запуска службы. Выберите модель на странице «Модели» и среду выполнения на странице «Среда выполнения», затем повторите.");
+            SetError($"{Loc.T("Service.Status.Error")}: не удалось получить параметры запуска для модели {model.Name} с профилем {profile.Name}.");
             return false;
         }
 
-        var llamaServerPath = FindLlamaServerPath();
-        if (string.IsNullOrWhiteSpace(llamaServerPath))
-        {
-            SetError($"{Loc.T("Service.Status.Error")}: llama-server.exe не найден в runtimes.");
-            return false;
-        }
-
-        _configWriter.Write(llamaServerPath, args);
+        _configWriter.Write(runtime.ExecutablePath, args, model.Id, profile.Id, runtime.Id);
         return true;
     }
 

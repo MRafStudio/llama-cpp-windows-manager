@@ -7,7 +7,10 @@ namespace LocalLlmConsole.Service;
 /// </summary>
 public sealed record ServiceConfig(
     string ExecutablePath,
-    IReadOnlyList<string> Arguments)
+    IReadOnlyList<string> Arguments,
+    string ModelId = "",
+    string ProfileId = "",
+    string RuntimeId = "")
 {
     public const string FileName = "service-config.json";
 

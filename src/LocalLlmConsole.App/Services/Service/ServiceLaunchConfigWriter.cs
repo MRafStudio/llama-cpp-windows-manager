@@ -20,16 +20,34 @@ public sealed class ServiceLaunchConfigWriter
         => Path.Combine(_workspaceRoot, "state", "service-config.json");
 
     /// <summary>
-    /// Записывает конфиг с исполняемым файлом llama-server и аргументами запуска.
+    /// Записывает конфиг с исполняемым файлом llama-server, аргументами запуска
+    /// и идентификаторами выбранных модели/профиля/среды выполнения.
     /// </summary>
-    public void Write(string executablePath, IReadOnlyList<string> arguments)
+    public void Write(string executablePath, IReadOnlyList<string> arguments, string modelId = "", string profileId = "", string runtimeId = "")
     {
         var dir = Path.GetDirectoryName(ConfigPath);
         if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
 
-        var config = new ServiceLaunchConfig(executablePath, arguments);
+        var config = new ServiceLaunchConfig(executablePath, arguments, modelId, profileId, runtimeId);
         var json = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
         File.WriteAllText(ConfigPath, json);
+    }
+
+    /// <summary>
+    /// Читает сохранённый конфиг (выбор модели/профиля/runtime) или null, если файла нет.
+    /// </summary>
+    public ServiceLaunchConfig? Read()
+    {
+        try
+        {
+            if (!File.Exists(ConfigPath)) return null;
+            var json = File.ReadAllText(ConfigPath);
+            return JsonSerializer.Deserialize<ServiceLaunchConfig>(json);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     public bool Exists => File.Exists(ConfigPath);
@@ -40,4 +58,7 @@ public sealed class ServiceLaunchConfigWriter
 /// </summary>
 public sealed record ServiceLaunchConfig(
     string ExecutablePath,
-    IReadOnlyList<string> Arguments);
+    IReadOnlyList<string> Arguments,
+    string ModelId = "",
+    string ProfileId = "",
+    string RuntimeId = "");

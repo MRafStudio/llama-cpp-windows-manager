@@ -103,7 +103,10 @@ public partial class MainWindow
                 configWriter,
                 setStatus,
                 setStatusAsync,
-                CollectServiceLaunchArgs);
+                LoadServiceModelsAsync,
+                LoadServiceProfilesAsync,
+                LoadServiceRuntimesAsync,
+                BuildServiceLaunchArgs);
         }
 
         // Привязываем ViewModel к MainWindowViewModel для данных
@@ -114,27 +117,47 @@ public partial class MainWindow
     }
 
     /// <summary>
-    /// Собирает актуальные аргументы запуска llama-server для выбранной модели
-    /// (путь к модели, порт, контекст, кэши и т.д.) — как при запуске из GUI.
+    /// Установленные модели для выпадающего списка службы (штатный StateStore).
     /// </summary>
-    private IReadOnlyList<string> CollectServiceLaunchArgs()
+    private Task<IReadOnlyList<LocalLlmConsole.Models.ModelRecord>> LoadServiceModelsAsync()
+    {
+        var stateStore = _stateStore ?? throw new InvalidOperationException(Loc.T("Status.PleaseWait"));
+        return stateStore.ListModelsAsync();
+    }
+
+    /// <summary>
+    /// Профили запуска выбранной модели (штатный LaunchProfiles; Default создаётся при необходимости).
+    /// </summary>
+    private async Task<IReadOnlyList<LocalLlmConsole.Models.NamedModelLaunchProfile>> LoadServiceProfilesAsync(LocalLlmConsole.Models.ModelRecord model)
+    {
+        if (ModelServices.LaunchProfiles is null) return [];
+        var profiles = await ModelServices.LaunchProfiles.ListNamedAsync(model);
+        if (profiles.Count == 0)
+            profiles = [await ModelServices.LaunchProfiles.EnsureDefaultAsync(model, _settings)];
+        return profiles;
+    }
+
+    /// <summary>
+    /// Установленные среды выполнения для выпадающего списка службы (штатный StateStore).
+    /// </summary>
+    private Task<IReadOnlyList<LocalLlmConsole.Models.RuntimeRecord>> LoadServiceRuntimesAsync()
+        => AppServices.StateStore.ListRuntimesAsync();
+
+    /// <summary>
+    /// Собирает аргументы запуска llama-server для выбранных на странице службы
+    /// модели, профиля и среды выполнения — штатными возможностями приложения,
+    /// как при запуске из GUI. Никаких фоллбэков.
+    /// </summary>
+    private IReadOnlyList<string> BuildServiceLaunchArgs(
+        LocalLlmConsole.Models.ModelRecord model,
+        string profileId,
+        LocalLlmConsole.Models.RuntimeRecord runtime)
     {
         try
         {
-            // Только выбранная модель — никаких фоллбэков.
-            // Подстановка "левой" модели с неправильными параметрами опасна:
-            // служба может использоваться агентом. Лучше честная ошибка.
-            var model = SelectedModel();
-            if (model is null) return Array.Empty<string>();
-
-            // Только выбранный runtime — никаких фоллбэков.
-            var runtime = SelectedRuntime();
-            if (runtime is null) return Array.Empty<string>();
-
-            // Штатный сервис: строит финальные параметры запуска модели
-            // (профиль + дефолты) — как при запуске из GUI.
+            // Штатный сервис: строит финальные параметры запуска модели (профиль + дефолты)
             var viewState = ModelServices.ModelLaunchSettingsWorkflow
-                .BuildAsync(model, _settings, CancellationToken.None, SelectedModelLaunchProfileId())
+                .BuildAsync(model, _settings, CancellationToken.None, profileId)
                 .GetAwaiter().GetResult();
             var appSettings = viewState.LaunchSettings;
 
@@ -161,7 +184,7 @@ public partial class MainWindow
         }
         catch
         {
-            return Array.Empty<string>();
+            return [];
         }
     }
 
