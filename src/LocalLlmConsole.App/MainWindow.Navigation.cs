@@ -21,7 +21,7 @@ public partial class MainWindow
         await RefreshRuntimesAsync();
         await RefreshJobsAsync();
         await RefreshOverviewAsync();
-        if (_viewModel.CurrentPage == "Lifetime") await RefreshLifetimeMetricsAsync();
+        if (_viewModel.CurrentPage == "Metrics") await RefreshLifetimeMetricsAsync();
         if (_viewModel.CurrentPage == "Windows") await RefreshWindowsAsync();
         if (_viewModel.CurrentPage == "WSL Linux") await RefreshWslLinuxAsync();
     }
@@ -29,6 +29,7 @@ public partial class MainWindow
     private async void Refresh_Click(object sender, RoutedEventArgs e) => await RunAsync(Loc.T("Status.Refreshing"), RefreshAllAsync);
     private void OpenWorkspace_Click(object sender, RoutedEventArgs e) => _coreServices.App.ShellIntegration.OpenFolder(_workspaceRoot);
     private void ShowOverview_Click(object sender, RoutedEventArgs e) => ShowOverview();
+    private void ShowService_Click(object sender, RoutedEventArgs e) => ShowService();
     private void ShowModels_Click(object sender, RoutedEventArgs e) => ShowModels();
     private void ShowRuntimes_Click(object sender, RoutedEventArgs e) => ShowRuntimes();
     private void ShowWindows_Click(object sender, RoutedEventArgs e) => ShowWindows();
@@ -38,5 +39,4 @@ public partial class MainWindow
     private void ShowLogs_Click(object sender, RoutedEventArgs e) => ShowLogs();
     private void ShowUpdates_Click(object sender, RoutedEventArgs e) => ShowUpdates();
     private void ShowHelp_Click(object sender, RoutedEventArgs e) => ShowHelp();
-    private void ShowService_Click(object sender, RoutedEventArgs e) => ShowService();
 }

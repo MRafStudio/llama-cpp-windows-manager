@@ -1,7 +1,7 @@
 #define AppName "llama.cpp Windows Manager (ext)"
 #define AppExeName "LlamaCppWindowsManager.exe"
 #ifndef AppVersion
-#define AppVersion "2.2.0"
+#define AppVersion "2.3.0"
 #endif
 #ifndef SourceDir
 #define SourceDir "..\dist\LlamaCppWindowsManager-win-x64"
@@ -60,6 +60,7 @@ Source: "{#SourceDir}\docs\LLAMAMANAGER-SERVICE.md"; DestDir: "{app}\docs"; Flag
 Source: "{#SourceDir}\LocalLlmConsole.Service.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceDir}\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceDir}\THIRD-PARTY-NOTICES.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#SourceDir}\sbom.spdx.json"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceDir}\licenses\*"; DestDir: "{app}\licenses"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [InstallDelete]
@@ -101,13 +102,14 @@ begin
   if DirExists(DataDir) then
   begin
     DeleteAppDataOnUninstall :=
-      MsgBox(
+      SuppressibleMsgBox(
         'Uninstall llama.cpp Windows Manager?' + #13#10 + #13#10 +
         'Your models, runtimes, logs, cache, and settings in:' + #13#10 +
         DataDir + #13#10 + #13#10 +
         'will be kept by default. Delete this data too?',
         mbConfirmation,
-        MB_YESNO or MB_DEFBUTTON2) = IDYES;
+        MB_YESNO or MB_DEFBUTTON2,
+        IDNO) = IDYES;
   end;
 end;
 

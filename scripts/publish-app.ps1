@@ -108,6 +108,11 @@ if ($Info -match "No SDKs were found") {
   throw ".NET runtime is installed, but no SDK was found. Install the .NET 10 SDK to publish the self-contained app."
 }
 
+foreach ($publishProject in @($CliProject, $Project)) {
+  & $Dotnet restore $publishProject -r $Runtime --locked-mode -p:PublishSingleFile=true -p:SelfContained=true
+  if ($LASTEXITCODE -ne 0) { throw "Locked restore failed for $publishProject" }
+}
+
 if (Test-Path -LiteralPath $PublishDir) {
   Remove-DistPath -Path $PublishDir -Label "publish folder" -Recurse
 }
@@ -124,6 +129,7 @@ if (Test-Path -LiteralPath $BundleZip) {
 $cliPublishArgs = @(
   "publish",
   $CliProject,
+  "--no-restore",
   "-c",
   $Configuration,
   "-r",
@@ -195,6 +201,7 @@ Compress-Archive -Path (Join-Path $BundleStageDir "*") -DestinationPath $BundleZ
 $publishArgs = @(
   "publish",
   $Project,
+  "--no-restore",
   "-c",
   $Configuration,
   "-r",
@@ -238,6 +245,10 @@ $servicePublishArgs = @(
 )
 & $Dotnet @servicePublishArgs
 if ($LASTEXITCODE -ne 0) { throw "LocalLlmConsole.Service publish failed." }
+
+$SbomPath = Join-Path $PublishDir "sbom.spdx.json"
+& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "new-sbom.ps1") -OutputPath $SbomPath -Version ([string]$AppVersion)
+if ($LASTEXITCODE -ne 0) { throw "SPDX SBOM generation failed." }
 
 Get-ChildItem -Path $PublishDir -Recurse -Filter *.pdb -File -ErrorAction SilentlyContinue |
   Remove-Item -Force
@@ -285,3 +296,4 @@ Write-Host "Published llama.cpp Windows Manager self-contained app to $PublishDi
 Write-Host "Wrote SHA-256 companion file to $ExeHashPath" -ForegroundColor Green
 Write-Host "Wrote llwmctl SHA-256 companion file to $CliExeHashPath" -ForegroundColor Green
 Write-Host "Wrote portable release archive to $ZipPath" -ForegroundColor Green
+Write-Host "Wrote SPDX SBOM to $SbomPath" -ForegroundColor Green

@@ -117,6 +117,7 @@ public sealed partial class ModelCatalogService
             var appOwned = existingForPath?.FirstOrDefault(model => model.Ownership == OwnershipKind.AppOwned);
             if (appOwned is not null)
             {
+                // Миграция id: если формат изменился (хеш убран), пересоздаём запись.
                 var expectedId = ModelIdForPath(scopeRoot, appOwned.ModelPath);
                 if (!string.Equals(appOwned.Id, expectedId, StringComparison.OrdinalIgnoreCase))
                 {
@@ -182,6 +183,9 @@ public sealed partial class ModelCatalogService
             metadata = new JsonObject { ["rawMetadata"] = metadataJson };
         }
 
+        try { metadata["ggufSizeBytes"] = new FileInfo(modelPath).Length; }
+        catch { metadata["ggufSizeBytes"] = null; }
+
         var gguf = GgufMetadataReader.TryRead(modelPath);
         if (gguf.Count == 0) return metadata.ToJsonString();
 
@@ -192,8 +196,24 @@ public sealed partial class ModelCatalogService
         metadata["ggufArchitecture"] = string.IsNullOrWhiteSpace(architecture) ? "unknown" : architecture;
         metadata["ggufQuantization"] = string.IsNullOrWhiteSpace(quantization) ? "unknown" : quantization;
         if (contextLength > 0) metadata["ggufContextLength"] = contextLength;
+        metadata["ggufParameterCount"] = TryPositiveInteger(gguf, "general.parameter_count")
+            ?? GgufMetadataReader.TryReadParameterCount(modelPath);
         metadata["ggufHasChatTemplate"] = gguf.ContainsKey("tokenizer.chat_template");
         return metadata.ToJsonString();
+    }
+
+    private static long? TryPositiveInteger(IReadOnlyDictionary<string, object?> metadata, string key)
+    {
+        if (!metadata.TryGetValue(key, out var value) || value is null) return null;
+        try
+        {
+            var parsed = Convert.ToInt64(value, CultureInfo.InvariantCulture);
+            return parsed > 0 ? parsed : null;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private static IEnumerable<string> FindModelFiles(string root)

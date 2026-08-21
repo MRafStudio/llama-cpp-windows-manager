@@ -174,10 +174,73 @@ public partial class MainWindow
         return Path.Combine(logs, $"llama-server-service-{DateTime.Now:yyyyMMdd-HHmmss}.log");
     }
 
+    /// <summary>
+    /// Сохраняет режим окна при закрытии: развёрнутое или обычное.
+    /// Свёрнутое окно не сохраняем (WindowState.Minimized не записывается).
+    /// </summary>
+    private void PersistWindowState()
+    {
+        var maximized = WindowState == WindowState.Maximized;
+        WindowStatePersistence.Save(_workspaceRoot, maximized);
+    }
+
+    /// <summary>
+    /// Восстанавливает режим окна при старте: если при закрытии окно было
+    /// развёрнуто на весь экран — запускаем развёрнутым, иначе обычным.
+    /// </summary>
+    private void RestoreWindowState()
+    {
+        if (WindowStatePersistence.Load(_workspaceRoot) == true)
+            WindowState = WindowState.Maximized;
+    }
+
     private sealed record ServiceLaunchConfig(
         string ExecutablePath,
         IReadOnlyList<string>? Arguments,
         string ModelId = "",
         string ProfileId = "",
         string RuntimeId = "");
+}
+
+/// <summary>
+/// Состояние окна при закрытии (для восстановления при следующем старте).
+/// Свёрнутое окно не сохраняем — важен только режим: развёрнутое или обычное.
+/// </summary>
+internal static class WindowStatePersistence
+{
+    private const string FileName = "window-state.json";
+    private const string KeyMaximized = "maximized";
+
+    internal static void Save(string workspaceRoot, bool maximized)
+    {
+        try
+        {
+            var dir = System.IO.Path.Combine(workspaceRoot, "state");
+            System.IO.Directory.CreateDirectory(dir);
+            System.IO.File.WriteAllText(
+                System.IO.Path.Combine(dir, FileName),
+                System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, bool> { [KeyMaximized] = maximized }));
+        }
+        catch
+        {
+            // Сохранение состояния окна некритично.
+        }
+    }
+
+    internal static bool? Load(string workspaceRoot)
+    {
+        try
+        {
+            var path = System.IO.Path.Combine(workspaceRoot, "state", FileName);
+            if (!System.IO.File.Exists(path)) return null;
+            var doc = System.Text.Json.JsonDocument.Parse(System.IO.File.ReadAllText(path));
+            if (doc.RootElement.TryGetProperty(KeyMaximized, out var value))
+                return value.GetBoolean();
+        }
+        catch
+        {
+            // Некорректный файл — считаем, что состояния нет.
+        }
+        return null;
+    }
 }

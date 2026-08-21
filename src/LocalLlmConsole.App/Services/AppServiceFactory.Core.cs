@@ -100,6 +100,7 @@ public sealed partial class AppServiceFactory
         var runtimeSessionApplication = CreateRuntimeSessionApplicationService(
             runtimeSessionCommands,
             runtimeSessionFollowupApplication);
+        var jobRows = CreateJobRowProjectionService();
         var modelRuntimeStartFollowup = CreateModelRuntimeStartFollowupService();
         var modelRuntimeStartFollowupApplication = CreateModelRuntimeStartFollowupApplicationService();
         var runtimeEndpointProbe = CreateRuntimeEndpointProbeService(request.RuntimeProbeClient);
@@ -166,7 +167,6 @@ public sealed partial class AppServiceFactory
         var modelLaunchHeadSelectionApplication = CreateModelLaunchHeadSelectionApplicationService();
         var modelLaunchSettingsSaveApplication = CreateModelLaunchSettingsSaveApplicationService();
         var modelLaunchVariantSaveApplication = CreateModelLaunchVariantSaveApplicationService();
-        var llamaServiceController = CreateLlamaServiceController(request.ProcessRunner);
 
         return new MainWindowCoreServices(
             new MainWindowCoreUiServices(
@@ -213,8 +213,7 @@ public sealed partial class AppServiceFactory
                 settingsPageDefinitions,
                 helpCatalog,
                 helpNavigation,
-                localAppStartup,
-                llamaServiceController),
+                localAppStartup),
             new MainWindowCoreHuggingFaceServices(
                 huggingFaceModelCards,
                 huggingFaceSearchApplication,
@@ -236,6 +235,7 @@ public sealed partial class AppServiceFactory
                 runtimeReadinessCompletionApplication,
                 runtimeReadinessMonitorApplication,
                 runtimeSessionApplication,
+                jobRows,
                 runtimeEndpointProbe,
                 endpointInspection,
                 runtimeTelemetryApplication,

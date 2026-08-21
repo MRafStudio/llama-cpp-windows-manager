@@ -7,7 +7,7 @@ public partial class MainWindow
     private void SetActiveNavigation(string title)
     {
         System.Windows.Automation.AutomationProperties.SetName(PageHost, title);
-        foreach (var button in new[] { OverviewNavButton, ModelsNavButton, RuntimesNavButton, ServiceNavButton, WindowsNavButton, WslLinuxNavButton, SettingsNavButton, LifetimeNavButton, LogsNavButton, UpdatesNavButton, HelpNavButton })
+        foreach (var button in new[] { OverviewNavButton, ModelsNavButton, RuntimesNavButton, WindowsNavButton, WslLinuxNavButton, SettingsNavButton, ServiceNavButton, LifetimeNavButton, LogsNavButton, UpdatesNavButton, HelpNavButton })
             button.Tag = null;
 
         var active = title switch
@@ -15,11 +15,11 @@ public partial class MainWindow
             "Overview" => OverviewNavButton,
             "Models" => ModelsNavButton,
             "Runtimes" => RuntimesNavButton,
-            "Service" => ServiceNavButton,
             "Windows" => WindowsNavButton,
+            "Service" => ServiceNavButton,
             "WSL Linux" => WslLinuxNavButton,
             "Settings" => SettingsNavButton,
-            "Lifetime" => LifetimeNavButton,
+            "Metrics" => LifetimeNavButton,
             "Logs" => LogsNavButton,
             "Updates" => UpdatesNavButton,
             "Help" => HelpNavButton,
@@ -36,8 +36,8 @@ public partial class MainWindow
         UiAccessibility.SetButtonToolTip(OverviewNavButton, Loc.T("Tooltip.NavOverview"));
         UiAccessibility.SetButtonToolTip(ModelsNavButton, Loc.T("Tooltip.NavModels"));
         UiAccessibility.SetButtonToolTip(RuntimesNavButton, Loc.T("Tooltip.NavRuntimes"));
-        UiAccessibility.SetButtonToolTip(ServiceNavButton, Loc.T("Tooltip.NavService"));
         UiAccessibility.SetButtonToolTip(WindowsNavButton, Loc.T("Tooltip.NavWindows"));
+        UiAccessibility.SetButtonToolTip(ServiceNavButton, Loc.T("Tooltip.NavService"));
         UiAccessibility.SetButtonToolTip(WslLinuxNavButton, Loc.T("Tooltip.NavWslLinux"));
         UiAccessibility.SetButtonToolTip(SettingsNavButton, Loc.T("Tooltip.NavSettings"));
         UiAccessibility.SetButtonToolTip(LifetimeNavButton, Loc.T("Tooltip.NavLifetime"));
@@ -115,7 +115,7 @@ public partial class MainWindow
             "Windows Tools" => "Open advanced Windows setup actions.",
             "WSL Tools" => "Open advanced WSL setup actions.",
             "Open Logs" => "Open log inspection.",
-            "Open Lifetime" => "Open lifetime token counters.",
+            "Open Metrics" => "Open usage and performance metrics.",
             "Check Updates" => "Open app update checks.",
             _ when label.StartsWith("Install ", StringComparison.OrdinalIgnoreCase) => $"Run {label}.",
             _ when label.StartsWith("Delete ", StringComparison.OrdinalIgnoreCase) => $"Run {label}.",

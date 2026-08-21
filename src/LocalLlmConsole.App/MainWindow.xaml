@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:LocalLlmConsole"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
-        Title="llama.cpp Windows Manager v2.2.0" MinWidth="900" MinHeight="600" Width="1200" Height="780"
+        Title="llama.cpp Windows Manager (ext) v2.3.0" MinWidth="900" MinHeight="600" Width="1200" Height="780"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None" ResizeMode="CanResize"
         Background="{DynamicResource AppBack}"
@@ -50,7 +50,7 @@
                        HorizontalAlignment="Center"
                        VerticalAlignment="Center"/>
           </Button>
-          <TextBlock Text="llama.cpp Windows Manager"
+          <TextBlock Text="llama.cpp Windows Manager (ext)"
                      Foreground="{DynamicResource TextMain}"
                      FontSize="13.5"
                      FontWeight="SemiBold"
@@ -131,8 +131,8 @@
             <Button x:Name="OverviewNavButton" Style="{StaticResource NavButton}" local:VisualRole.NavGlyph="&#xE80F;" Click="ShowOverview_Click"/>
             <Button x:Name="ModelsNavButton" Style="{StaticResource NavButton}" local:VisualRole.NavGlyph="&#xE8B7;" Click="ShowModels_Click"/>
             <Button x:Name="RuntimesNavButton" Style="{StaticResource NavButton}" local:VisualRole.NavGlyph="&#xE943;" Click="ShowRuntimes_Click"/>
-            <Button x:Name="ServiceNavButton" Style="{StaticResource NavButton}" local:VisualRole.NavGlyph="&#xE71D;" Click="ShowService_Click"/>
             <Button x:Name="SettingsNavButton" Style="{StaticResource NavButton}" local:VisualRole.NavGlyph="&#xE713;" Click="ShowSettings_Click"/>
+            <Button x:Name="ServiceNavButton" Style="{StaticResource NavButton}" local:VisualRole.NavGlyph="&#xE71D;" Click="ShowService_Click"/>
             <Button x:Name="LifetimeNavButton" Style="{StaticResource NavButton}" local:VisualRole.NavGlyph="&#xE823;" Click="ShowLifetime_Click"/>
             <Button x:Name="LogsNavButton" Style="{StaticResource NavButton}" local:VisualRole.NavGlyph="&#xE8A5;" Click="ShowLogs_Click"/>
             <Border Height="1"

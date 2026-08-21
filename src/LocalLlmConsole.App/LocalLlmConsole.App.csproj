@@ -11,10 +11,10 @@
     <AssemblyTitle>llama.cpp Windows Manager</AssemblyTitle>
     <Product>llama.cpp Windows Manager</Product>
     <RepositoryUrl>https://github.com/MRafStudio/llama-cpp-windows-manager</RepositoryUrl>
-    <Version>2.2.0</Version>
-    <AssemblyVersion>2.2.0.0</AssemblyVersion>
-    <FileVersion>2.2.0.0</FileVersion>
-    <InformationalVersion>v2.2.0</InformationalVersion>
+    <Version>2.3.0</Version>
+    <AssemblyVersion>2.3.0.0</AssemblyVersion>
+    <FileVersion>2.3.0.0</FileVersion>
+    <InformationalVersion>v2.3.0</InformationalVersion>
     <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
@@ -30,16 +30,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\LocalLlmConsole.Core\LocalLlmConsole.Core.csproj" />
     <ProjectReference Include="..\LocalLlmConsole.Service\LocalLlmConsole.Service.csproj"
-                      ReferenceOutputAssembly="false"
-                      SkipGetTargetFrameworkProperties="true" />
+                      ReferenceOutputAssembly="false" SkipGetTargetFrameworkProperties="true" />
   </ItemGroup>
-
-  <Target Name="CopyServiceExe" AfterTargets="Build">
-    <Copy SourceFiles="$(MSBuildProjectDirectory)\..\LocalLlmConsole.Service\bin\$(Configuration)\net10.0-windows\win-x64\LocalLlmConsole.Service.exe;$(MSBuildProjectDirectory)\..\LocalLlmConsole.Service\bin\$(Configuration)\net10.0-windows\win-x64\LocalLlmConsole.Service.dll"
-          DestinationFolder="$(OutDir)"
-          Condition="Exists('$(MSBuildProjectDirectory)\..\LocalLlmConsole.Service\bin\$(Configuration)\net10.0-windows\win-x64\LocalLlmConsole.Service.exe')" />
-  </Target>
 
   <ItemGroup>
     <EmbeddedResource Include="tools\Build-LlamaCppRuntime.ps1" />
@@ -66,4 +60,10 @@
     <EmbeddedResource Include="Localization\Strings.sv.json" WithCulture="false" />
     <EmbeddedResource Include="$(AgentBootstrapBundlePath)" LogicalName="LocalLlmConsole.AgentBootstrap.zip" Condition="'$(AgentBootstrapBundlePath)' != '' and Exists('$(AgentBootstrapBundlePath)')" />
   </ItemGroup>
+
+  <Target Name="CopyServiceExe" AfterTargets="Build">
+    <Copy SourceFiles="$(MSBuildProjectDirectory)\..\LocalLlmConsole.Service\bin\$(Configuration)\net10.0-windows\win-x64\LocalLlmConsole.Service.exe;$(MSBuildProjectDirectory)\..\LocalLlmConsole.Service\bin\$(Configuration)\net10.0-windows\win-x64\LocalLlmConsole.Service.dll"
+          DestinationFolder="$(OutDir)"
+          Condition="Exists('$(MSBuildProjectDirectory)\..\LocalLlmConsole.Service\bin\$(Configuration)\net10.0-windows\win-x64\LocalLlmConsole.Service.exe')" />
+  </Target>
 </Project>

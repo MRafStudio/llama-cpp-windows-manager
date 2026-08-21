@@ -45,6 +45,51 @@ public partial class MainWindow : Window
         _windowsPage = uiState.WindowsPage;
         _wslPage = uiState.WslPage;
         _environmentPageSnapshots = uiState.EnvironmentPageSnapshots;
+        _launchSettingsController = new LaunchSettingsPageController(
+            _workspaceRoot,
+            _launchSettingsPanel,
+            _coreServices.Ui,
+            _coreServices.Models,
+            new LaunchSettingsPageControllerActions(
+                () => _settings,
+                settings => _settings = settings,
+                SelectedModel,
+                SelectedModelLaunchProfileId,
+                SelectedLaunchRuntimeId,
+                () => ModelServices,
+                RunAsync,
+                RunBackground,
+                runtimeId => RefreshRuntimeSelectorAsync(runtimeId),
+                ApplyModelCapabilitiesAsync,
+                RefreshModelsAsync,
+                SelectLaunchProfileAfterRefresh,
+                RefreshOverviewModelSelectorAsync,
+                PersistSettingsAsync,
+                UpdateLaunchControlVisibility,
+                UpdateRuntimeCommandPreview,
+                UpdateContextSizeSuggestion,
+                NormalizeContextSizeBox,
+                CancelRuntimeLaunchOptionDiscovery,
+                request => _coreServices.App.FileSystemDialogs.PickOpenFile(request, this),
+                SetStatus));
+        _overviewSelection = new OverviewSelectionController(
+            _viewModel,
+            _overviewPage,
+            _sessions,
+            _coreServices.Runtime,
+            _coreServices.Models,
+            _coreServices.Ui.SelectionReentrancy,
+            new OverviewSelectionControllerActions(
+                () => AppServices,
+                () => ModelServices,
+                () => _settings,
+                settings => _activeRuntimeSettings = settings,
+                ModelRuntimeUnloadActions,
+                SaveActiveRuntimeSessionsAsync,
+                RefreshRuntimeMetricsAsync,
+                SetStatus,
+                this,
+                _coreServices.App.Clipboard.SetText));
         _pageControllers = CreatePageControllers();
         InitializeTrayIcon();
     }
@@ -84,6 +129,7 @@ public partial class MainWindow : Window
                 await AdoptServiceManagedSessionAsync();
             RunBackground(AutoSelectDetectedWslDistroAsync, "WSL distro auto-select failed");
         });
+        RestoreWindowState();
         await ShowCompletedAppUpdateNoticeAsync();
         RunBackground(CheckForAppUpdatesOnStartupAsync, "App update check failed");
     }
@@ -134,6 +180,7 @@ public partial class MainWindow : Window
     private async void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
         var controlShutdownConfirmed = Interlocked.Exchange(ref _controlShutdownConfirmed, 0) == 1;
+        PersistWindowState();
         // Cancel synchronously before the first await. Otherwise WPF can continue
         // closing the window while cleanup is still running, and the follow-up
         // Close() below then throws because the window is already closing.
