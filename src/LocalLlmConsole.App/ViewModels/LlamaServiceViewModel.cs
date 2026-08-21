@@ -238,6 +238,18 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
     }
 
     /// <summary>
+    /// Отображаемое имя установленной службы (видно, из какого каталога она установлена).
+    /// Поле всегда зарезервировано под заголовком страницы; пустое, если службы нет.
+    /// </summary>
+    public string ServiceDisplayName { get; private set; } = "";
+
+    private void UpdateServiceDisplayName()
+    {
+        ServiceDisplayName = _isInstalled ? _serviceManager.GetDisplayName() : "";
+        OnPropertyChanged(nameof(ServiceDisplayName));
+    }
+
+    /// <summary>
     /// Доступна ли установка службы (нет активной операции, служба не установлена).
     /// </summary>
     public bool CanInstall => !_isLoading && !_isInstalled;
@@ -420,6 +432,7 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
         try
         {
             IsInstalled = _serviceManager.IsInstalled();
+            UpdateServiceDisplayName();
 
             if (!IsInstalled)
             {
@@ -623,6 +636,7 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
             ApplyResult(result);
             // Обновляем состояние установки, чтобы кнопки переключились
             IsInstalled = _serviceManager.IsInstalled();
+            UpdateServiceDisplayName();
         }
         catch (Exception ex)
         {
@@ -648,6 +662,7 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
             ApplyResult(result);
             // Обновляем состояние установки, чтобы кнопки переключились
             IsInstalled = _serviceManager.IsInstalled();
+            UpdateServiceDisplayName();
         }
         catch (Exception ex)
         {

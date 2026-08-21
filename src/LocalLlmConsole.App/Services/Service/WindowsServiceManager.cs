@@ -10,6 +10,23 @@ public sealed class WindowsServiceManager
 {
     public const string ServiceName = "llama-cpp-server";
 
+    /// <summary>
+    /// Отображаемое имя установленной службы (например, «Llama.cpp (D:\...\LlamaManager)»).
+    /// Позволяет понять, из какого каталога установлена служба.
+    /// </summary>
+    public string GetDisplayName()
+    {
+        try
+        {
+            using var controller = new System.ServiceProcess.ServiceController(ServiceName);
+            return controller.DisplayName;
+        }
+        catch
+        {
+            return "";
+        }
+    }
+
     public bool IsInstalled()
     {
         try

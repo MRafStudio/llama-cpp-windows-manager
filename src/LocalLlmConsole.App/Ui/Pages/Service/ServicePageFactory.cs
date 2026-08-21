@@ -63,6 +63,23 @@ public static class ServicePageFactory
         };
         root.Children.Add(headerText);
 
+        // Отображаемое имя службы (зарезервированная строка под заголовком;
+        // пустая, если служба не установлена). Жирный шрифт — имя службы.
+        var serviceDisplayNameText = new TextBlock
+        {
+            FontSize = 14,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = new SolidColorBrush(Colors.Gray),
+            Margin = new Thickness(0, 0, 0, 12)
+        };
+        var displayNameBinding = new System.Windows.Data.Binding("ServiceDisplayName")
+        {
+            Source = request.ViewModel,
+            Mode = System.Windows.Data.BindingMode.OneWay
+        };
+        serviceDisplayNameText.SetBinding(TextBlock.TextProperty, displayNameBinding);
+        root.Children.Add(serviceDisplayNameText);
+
         // Статус службы
         var statusLabel = new TextBlock
         {
@@ -366,6 +383,7 @@ public static class ServicePageFactory
 
         // Set DockPanel alignment
         DockPanel.SetDock(headerText, Dock.Top);
+        DockPanel.SetDock(serviceDisplayNameText, Dock.Top);
         DockPanel.SetDock(statusLabel, Dock.Top);
         DockPanel.SetDock(statusText, Dock.Top);
         DockPanel.SetDock(selectionPanel, Dock.Top);
