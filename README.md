@@ -1,15 +1,15 @@
 # llama.cpp Windows Manager
 
-A Windows desktop manager for installing `llama.cpp` runtimes, organizing GGUF
-models, saving launch profiles, and running supervised OpenAI-compatible model
-endpoints on native Windows or Ubuntu/WSL.
+Десктопный менеджер для Windows: установка рантаймов `llama.cpp`, организация
+GGUF-моделей, сохранение профилей запуска и запуск контролируемых
+OpenAI-совместимых endpoint'ов моделей в нативном Windows или Ubuntu/WSL.
 
-> Unofficial community project. Not affiliated with or endorsed by
-> `llama.cpp` or `ggml-org`.
+> Неофициальный общественный проект. Не связан с `llama.cpp` или `ggml-org`
+> и не одобрен ими.
 
-[Download the latest release](https://github.com/MRafStudio/llama-cpp-windows-manager/releases/latest)
-· [Read the documentation](docs/DEVELOPMENT.md)
-· [Automate with `llwmctl`](docs/CONTROL_API.md)
+[Скачать последний релиз](https://github.com/MRafStudio/llama-cpp-windows-manager/releases/latest)
+· [Читать документацию](docs/DEVELOPMENT.md)
+· [Автоматизация через `llwmctl`](docs/CONTROL_API.md)
 
 <p align="center">
   <a href="https://buymeacoffee.com/alekkson">
@@ -17,33 +17,33 @@ endpoints on native Windows or Ubuntu/WSL.
   </a>
 </p>
 
-![llama.cpp Windows Manager product tour](docs/images/llama-cpp-windows-manager-demo.gif)
+![Обзор возможностей llama.cpp Windows Manager](docs/images/llama-cpp-windows-manager-demo.gif)
 
-## Why use llama.cpp Windows Manager?
+## Зачем нужен llama.cpp Windows Manager?
 
-* **Control `llama.cpp` without managing commands and processes by hand.**
-* **Run multiple models simultaneously**, each with saved settings, a dedicated
-  port, and its own `/v1` endpoint.
-* **Choose a runtime for each launch profile:** native Windows or WSL, using CPU,
-  CUDA, Vulkan, or Intel Arc SYCL.
-* **Connect OpenAI compatible coding and chat clients** through direct model
-  endpoints or one shared gateway.
-* **Automate and monitor advanced workflows** with model groups, transactional
-  loading, idle unloading, live metrics, logs, and the authenticated `llwmctl`
-  control API.
+* **Управляйте `llama.cpp` без ручного ведения команд и процессов.**
+* **Запускайте несколько моделей одновременно**, каждая — с сохранёнными
+  настройками, выделенным портом и собственным `/v1` endpoint'ом.
+* **Выбирайте рантайм для каждого профиля запуска:** нативный Windows или WSL,
+  с использованием CPU, CUDA, Vulkan или Intel Arc SYCL.
+* **Подключайте OpenAI-совместимые клиенты кодинга и чата** через прямые
+  endpoint'ы моделей или единый общий gateway.
+* **Автоматизируйте и отслеживайте продвинутые сценарии** с помощью групп
+  моделей, транзакционной загрузки, выгрузки по простою, живых метрик, логов
+  и аутентифицированного API управления `llwmctl`.
 
-> Choose a chat focused tool when simplicity is the priority. Choose llama.cpp
-> Windows Manager when you need deeper control, multiple managed models, and
-> dependable local endpoints.
+> Выбирайте инструмент, ориентированный на чат, когда важна простота. Выбирайте
+> llama.cpp Windows Manager, когда нужен более глубокий контроль, несколько
+> управляемых моделей и надёжные локальные endpoint'ы.
 
-## Install
+## Установка
 
-Download the Windows x64 installer or portable ZIP from
+Скачайте установщик Windows x64 или portable ZIP из
 [GitHub Releases](https://github.com/MRafStudio/llama-cpp-windows-manager/releases/latest),
-along with its matching `.sha256` file. Releases are self-contained; installing
-the .NET runtime separately is not required.
+вместе с соответствующим файлом `.sha256`. Релизы автономны (self-contained);
+отдельная установка .NET runtime не требуется.
 
-Verify a downloaded artifact before running it:
+Проверьте загруженный артефакт перед запуском:
 
 ```powershell
 $asset = "LlamaCppWindowsManager-win-x64.zip"
@@ -52,62 +52,70 @@ $actual = (Get-FileHash $asset -Algorithm SHA256).Hash
 if ($actual -ne $expected) { throw "Release checksum mismatch" }
 ```
 
-- **Installer:** integrated installation, Start Menu entry, updater support, and
-  an optional Start with Windows task.
-- **Portable ZIP:** no installer; writable application data stays in `data`
-  beside `LlamaCppWindowsManager.exe`.
-- **Requirements:** Windows 10 or 11 x64. GPU runtimes also require compatible
-  vendor drivers and, for WSL backends, a working Ubuntu/WSL environment.
+- **Установщик:** встроенная установка, пункт в меню «Пуск», поддержка
+  обновлений и опциональная задача автозапуска вместе с Windows.
+- **Portable ZIP:** без установщика; записываемые данные приложения хранятся
+  в папке `data` рядом с `LlamaCppWindowsManager.exe`.
+- **Требования:** Windows 10 или 11 x64. GPU-рантаймы также требуют
+  совместимых драйверов производителя, а для WSL-бэкендов — рабочего
+  окружения Ubuntu/WSL.
 
-Published artifacts are unsigned unless a release explicitly states that its
-signature was produced by the protected signing workflow. A checksum verifies
-file integrity; it is not a publisher identity guarantee.
+Опубликованные артефакты не подписаны, если в описании релиза явно не указано,
+что подпись была создана защищённым workflow подписания. Контрольная сумма
+(checksum) проверяет целостность файла; она не является гарантией подлинности
+издателя.
 
-## Quick start
+## Быстрый старт
 
-1. Open **Runtimes** and install a prebuilt runtime for Windows or WSL. You can
-   also place a folder containing `llama-server` or `llama-server.exe` under the
-   configured runtimes folder, then scan or register it.
-2. Open **Models** to download a GGUF from Hugging Face or register an existing
-   model. To add one manually, copy its `.gguf` file anywhere under the
-   configured models folder, then choose **Scan Models Folder**.
-3. Select a runtime, adjust the launch settings, and save a profile for the
-   model.
-4. Open **Overview**, select the model/profile, and choose **Load**. The endpoint
-   is ready when its state becomes **Loaded**.
-5. Point an OpenAI-compatible client at the displayed direct endpoint, or enable
-   the shared gateway in **Settings** and use a model ID returned by
+1. Откройте **Runtimes** и установите готовый рантайм для Windows или WSL.
+   Можно также поместить папку с `llama-server` или `llama-server.exe`
+   в настроенную папку рантаймов, а затем просканировать или
+   зарегистрировать её.
+2. Откройте **Models**, чтобы скачать GGUF с Hugging Face или
+   зарегистрировать существующую модель. Чтобы добавить модель вручную,
+   скопируйте её файл `.gguf` в любое место внутри настроенной папки моделей,
+   затем выберите **Scan Models Folder**.
+3. Выберите рантайм, настройте параметры запуска и сохраните профиль
+   для модели.
+4. Откройте **Overview**, выберите модель/профиль и нажмите **Load**.
+   Endpoint готов, когда его состояние станет **Loaded**.
+5. Направьте OpenAI-совместимый клиент на отображаемый прямой endpoint или
+   включите общий gateway в **Settings** и используйте ID модели, возвращаемый
    `GET /v1/models`.
 
-Model inference always requires the API key configured in **Settings**. The key
-is protected for the current Windows user and passed to `llama-server` through
-its environment rather than its command line. Some upstream llama.cpp builds
-leave health or model-catalog metadata public; do not treat those discovery
-responses as proof that inference is unauthenticated.
+Для инференса модели всегда требуется API-ключ, настроенный в **Settings**.
+Ключ защищён для текущего пользователя Windows и передаётся `llama-server`
+через его окружение, а не через командную строку. Некоторые сборки llama.cpp
+оставляют метаданные работоспособности или каталога моделей публичными;
+не считайте такие ответы обнаружения доказательством того, что инференс
+не требует аутентификации.
 
-## Profiles, groups, and companions
+## Профили, группы и компаньоны
 
-A launch profile records the runtime, port, context, GPU allocation, sampling,
-server, multimodal, and speculative-decoding options for one model. One-shot
-overrides do not change the saved profile unless explicitly saved.
+Профиль запуска фиксирует для одной модели рантайм, порт, контекст,
+выделение GPU, параметры сэмплирования, серверные и мультимодальные опции,
+а также опции спекулятивного декодирования. Разовые переопределения не меняют
+сохранённый профиль, если не сохранены явно.
 
-Groups are assigned to profiles rather than model records. Loading a group
-preflights every runtime, port, duplicate-model assignment, and aggregate VRAM
-requirement before starting any member. Retention policy controls automatic idle
-unloading; it does not schedule inference requests.
+Группы назначаются профилям, а не записям моделей. Загрузка группы выполняет
+предварительную проверку каждого рантайма, порта, дублирующихся назначений
+моделей и суммарных требований к VRAM до запуска любого участника. Политика
+удержания управляет автоматической выгрузкой по простою; она не планирует
+запросы на инференс.
 
-Vision, draft, and MTP companion auto-discovery is intentionally limited to the
-main model's exact folder. Explicit compatible paths may point elsewhere. See
-[Launch settings schema](docs/LAUNCH_SETTINGS_SCHEMA.md) for how curated and
-runtime-discovered options are rendered and persisted.
+Автообнаружение компаньонов Vision, draft и MTP намеренно ограничено папкой
+основной модели. Явно указанные совместимые пути могут указывать в другие
+места. О том, как курируемые и обнаруженные рантаймом опции отображаются
+и сохраняются, см.
+[Схему параметров запуска](docs/LAUNCH_SETTINGS_SCHEMA.md).
 
-## Control API and `llwmctl`
+## API управления и `llwmctl`
 
-`llwmctl.exe` is the command-line client for the authenticated, loopback-only
-Manager control API (`/api/v1/*`). This API operates the running application and
-is separate from the API-key-protected OpenAI-compatible gateway and direct
-model-inference endpoints. It does not start unmanaged `llama-server`
-processes.
+`llwmctl.exe` — это клиент командной строки для аутентифицированного,
+доступного только через loopback API управления Manager'ом (`/api/v1/*`).
+Этот API управляет запущенным приложением и отделён от защищённого API-ключом
+OpenAI-совместимого gateway и прямых endpoint'ов инференса моделей. Он не
+запускает неуправляемые процессы `llama-server`.
 
 ```powershell
 llwmctl status
@@ -123,61 +131,64 @@ llwmctl sessions metrics <session>
 llwmctl sessions logs <session>
 ```
 
-Automation tools should read [AGENTS.md](AGENTS.md) before operating the app.
-The full command and HTTP contracts are documented in
-[Local control API and `llwmctl`](docs/CONTROL_API.md).
+Инструменты автоматизации должны прочитать [AGENTS.md](AGENTS.md) перед
+работой с приложением. Полные контракты команд и HTTP описаны в
+[Локальный API управления и `llwmctl`](docs/CONTROL_API.md).
 
-## Security and data
+## Безопасность и данные
 
-- The Manager control API is loopback-only and independently authenticated.
-- Model serving defaults to loopback. Gateway and direct-port LAN exposure are
-  separate, explicit settings.
-- Security-owned `llama-server` arguments such as host, port, and API key cannot
-  be replaced through custom launch parameters.
-- Native child processes are attached to a Windows Job Object so they terminate
-  if the Manager exits unexpectedly.
-- Downloads and updates validate sizes, checksums when supplied, filenames, and
-  archive paths before installation.
-- Installer repair, update, and normal uninstall preserve application data
-  unless data removal is explicitly selected.
+- API управления Manager'ом работает только через loopback
+  и аутентифицируется независимо.
+- Раздача моделей по умолчанию ограничена loopback. Доступ gateway и прямых
+  портов из LAN — отдельные явные настройки.
+- Критичные для безопасности аргументы `llama-server` (host, port, API-ключ)
+  нельзя подменить через пользовательские параметры запуска.
+- Нативные дочерние процессы привязаны к Windows Job Object, поэтому они
+  завершаются при неожиданном выходе из Manager'а.
+- Загрузки и обновления проверяют размеры, контрольные суммы (когда они
+  предоставлены), имена файлов и пути в архиве до установки.
+- Восстановление установщика, обновление и обычное удаление сохраняют данные
+  приложения, если удаление данных не выбрано явно.
 
-Portable data is normally stored in `data` beside the executable. When that
-location is not writable, the app uses `%LocalAppData%\llama.cpp Windows Manager`.
-Set `LLAMA_CPP_WINDOWS_MANAGER_WORKSPACE` before launch to choose another
-workspace.
+Portable-данные обычно хранятся в папке `data` рядом с исполняемым файлом.
+Если это место недоступно для записи, приложение использует
+`%LocalAppData%\llama.cpp Windows Manager`. Задайте
+`LLAMA_CPP_WINDOWS_MANAGER_WORKSPACE` до запуска, чтобы выбрать другое
+рабочее пространство.
 
-## Development
+## Разработка
 
-Source development requires Windows 10/11 x64, PowerShell 5+, and the .NET 10
-SDK selected by `global.json`. Inno Setup 6 is required only for installer
-builds.
+Для разработки из исходников требуются Windows 10/11 x64, PowerShell 5+
+и .NET 10 SDK, выбранный в `global.json`. Inno Setup 6 требуется только
+для сборки установщика.
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-app.ps1 -Restore
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\test-release-gate.ps1
 ```
 
-Add `-IncludePublish` to validate the portable package and
-`-IncludeInstaller` on a machine configured with Inno Setup. Generated `bin`,
-`obj`, `TestResults`, `dist`, logs, local workspaces, databases, and model files
-are ignored by Git. Use `scripts/clean-repo.ps1` to remove generated output.
+Добавьте `-IncludePublish` для проверки portable-пакета и `-IncludeInstaller`
+на машине с настроенным Inno Setup. Сгенерированные `bin`, `obj`,
+`TestResults`, `dist`, логи, локальные рабочие пространства, базы данных
+и файлы моделей игнорируются Git. Используйте `scripts/clean-repo.ps1` для
+удаления сгенерированных результатов.
 
-Create the installer directly with `scripts/build-installer.ps1` after configuring
-Inno Setup and, for trusted releases, the signing certificate.
+Создайте установщик напрямую с помощью `scripts/build-installer.ps1` после
+настройки Inno Setup и, для доверенных релизов, сертификата подписания.
 
-Architecture and contribution details are in
-[Development guide](docs/DEVELOPMENT.md) and
-[Architecture contract](docs/ARCHITECTURE.md).
+Подробности об архитектуре и вкладе — в
+[Руководстве разработчика](docs/DEVELOPMENT.md) и
+[Контракте архитектуры](docs/ARCHITECTURE.md).
 
-## Documentation
+## Документация
 
-- [Release readiness](docs/RELEASE_READINESS.md)
-- [Windows installer](docs/INSTALLER.md)
-- [Signing releases](docs/SIGNING.md)
-- [Local control API](docs/CONTROL_API.md)
-- [Release hardening audit](docs/AUDIT.md)
+- [Готовность релиза](docs/RELEASE_READINESS.md)
+- [Установщик Windows](docs/INSTALLER.md)
+- [Подписание релизов](docs/SIGNING.md)
+- [Локальный API управления](docs/CONTROL_API.md)
+- [Аудит усиления безопасности релиза](docs/AUDIT.md)
 
-## License
+## Лицензия
 
-Released under the [MIT License](LICENSE). Bundled dependencies retain their own
-licenses; see [third-party notices](THIRD-PARTY-NOTICES.md).
+Распространяется по [лицензии MIT](LICENSE). Включённые зависимости сохраняют
+собственные лицензии; см. [уведомления третьих сторон](THIRD-PARTY-NOTICES.md).

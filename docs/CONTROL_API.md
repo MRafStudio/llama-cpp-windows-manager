@@ -1,38 +1,38 @@
-# Local control API and `llwmctl`
+# Локальный управляющий API и `llwmctl`
 
-Last reviewed: 2026-08-15
+Последняя проверка: 2026-08-15
 
-The Manager exposes an authenticated, loopback-only control API for local agents and automation. This API controls the desktop application's managed state; it is separate from the OpenAI-compatible model-serving gateway and direct model ports.
+Менеджер предоставляет аутентифицированный управляющий API, доступный только через loopback, для локальных агентов и автоматизации. Этот API управляет управляемым состоянием настольного приложения; он отделён от OpenAI-совместимого шлюза обслуживания моделей и прямых портов моделей.
 
-Use `llwmctl` instead of calling the HTTP API directly. The CLI discovers the active Manager instance, decrypts its current-user DPAPI session token, sends the request, and prints structured JSON.
+Используйте `llwmctl` вместо прямых вызовов HTTP API. CLI обнаруживает активный экземпляр Менеджера, расшифровывает его сессионный токен DPAPI текущего пользователя, отправляет запрос и выводит структурированный JSON.
 
-Portable releases also embed `llwmctl.exe`, `AGENTS.md`, `agent.md`, this reference, `LICENSE`, and third-party/.NET notices in the main executable. The Manager verifies and restores those sidecars beside itself at startup, so an executable-only update from an older release acquires the complete control surface and compliance notices automatically. `LlamaCppWindowsManager.exe --bootstrap-agent-sidecars-only` runs that bootstrap and exits without opening the UI.
+Переносимые (portable) сборки также встраивают `llwmctl.exe`, `AGENTS.md`, `agent.md`, настоящий справочник, `LICENSE` и уведомления о сторонних компонентах/.NET в основной исполняемый файл. При запуске Менеджер проверяет и восстанавливает эти сопутствующие файлы рядом с собой, поэтому обновление только исполняемого файла со старой сборки автоматически получает полную поверхность управления и уведомления о соответствии. `LlamaCppWindowsManager.exe --bootstrap-agent-sidecars-only` выполняет эту загрузку и завершает работу без открытия интерфейса.
 
-## Operator interface and API logs
+## Интерфейс оператора и журналы API
 
-The Manager intentionally does not include a visual API command console. Use `llwmctl` so requests go to the running desktop application through authenticated loopback transport and receive the same validation, self-identification, self-preservation, and confirmation handling as any other control client.
+Менеджер намеренно не включает визуальную консоль команд API. Используйте `llwmctl`, чтобы запросы поступали в запущенное настольное приложение через аутентифицированный loopback-транспорт и получали ту же обработку проверки, самоидентификации, самосохранения и подтверждения, что и любой другой управляющий клиент.
 
-Each routed request creates one bounded, redacted audit entry in `<workspace>/logs/control-api.log`. The in-app **Logs** page classifies this file as Type **Control API**. Entries contain only the HTTP method, route path without its query string, result status, and elapsed time. Request bodies, query values, bearer credentials, model-serving API keys, and response bodies are never written to this log. Its size follows the app's maximum log-file-size setting.
+Каждый маршрутизированный запрос создаёт одну ограниченную запись аудита с редактированием конфиденциальных данных в `<workspace>/logs/control-api.log`. Встроенная страница **Журналы** классифицирует этот файл как тип **Control API**. Записи содержат только HTTP-метод, путь маршрута без строки запроса, статус результата и затраченное время. Тела запросов, значения параметров запроса, учётные данные bearer, ключи API обслуживания моделей и тела ответов никогда не записываются в этот журнал. Его размер подчиняется настройке приложения о максимальном размере файла журнала.
 
-## Discovery and authentication
+## Обнаружение и аутентификация
 
-At startup the Manager writes a discovery document to:
+При запуске Менеджер записывает документ обнаружения в:
 
 ```text
 %LocalAppData%\llama.cpp Windows Manager\control.json
 <workspace>\state\control.json
 ```
 
-The document contains the current process ID, selected localhost port, workspace, and a DPAPI-protected per-process bearer token. The files are removed on normal shutdown. The control listener binds only to `127.0.0.1`, checks the `Host` and browser `Origin`, requires authentication for `/api/*` except health, limits JSON bodies to 1 MiB, and never uses the model-serving API key as its control credential.
+Документ содержит идентификатор текущего процесса, выбранный порт localhost, рабочую область и защищённый DPAPI пер-процессный bearer-токен. Файлы удаляются при штатном завершении работы. Управляющий слушатель привязывается только к `127.0.0.1`, проверяет заголовок `Host` и браузерный `Origin`, требует аутентификацию для `/api/*` кроме health, ограничивает JSON-тела 1 МиБ и никогда не использует ключ API обслуживания моделей как управляющее учётное данное.
 
-Override discovery when necessary:
+При необходимости переопределите обнаружение:
 
 ```powershell
 llwmctl status --workspace D:\MyManagerWorkspace
 llwmctl status --connection D:\MyManagerWorkspace\state\control.json
 ```
 
-## Self-identification
+## Самоидентификация
 
 ```powershell
 llwmctl self
@@ -41,28 +41,28 @@ llwmctl self --model qwen3-30b-q4-k-m
 llwmctl self --session model:qwen3-30b-q4-k-m
 ```
 
-The CLI automatically forwards `LLWM_SESSION_ID`, `LLWM_MODEL_ID`, `LLWM_ENDPOINT`, `OPENCODE_MODEL`, `OPENAI_MODEL`, `LLM_MODEL`, `OPENAI_BASE_URL`, or `OPENAI_API_BASE` when present. The API matches a session ID, registered model alias/ID/name/filename, endpoint port, or process ID. With exactly one running model it can make a clearly labelled single-session inference. With multiple unmatched sessions it returns all candidates instead of guessing.
+CLI автоматически передаёт `LLWM_SESSION_ID`, `LLWM_MODEL_ID`, `LLWM_ENDPOINT`, `OPENCODE_MODEL`, `OPENAI_MODEL`, `LLM_MODEL`, `OPENAI_BASE_URL` или `OPENAI_API_BASE`, если они заданы. API сопоставляет идентификатор сессии, зарегистрированный псевдоним/идентификатор/имя/имя файла модели, порт конечной точки или идентификатор процесса. При ровно одной запущенной модели оно может выполнить однократный вывод с явной пометкой. При нескольких несовпадающих сессиях возвращаются все кандидаты вместо угадывания.
 
-An agent should identify itself before unloading, restarting, or using `--unload-others`. Stopping its own model may terminate the response that initiated the command.
+Агент должен идентифицировать себя перед выгрузкой, перезапуском или использованием `--unload-others`. Остановка собственной модели может прервать ответ, который инициировал команду.
 
-For destructive lifecycle commands, `llwmctl` performs this identity check automatically. It refuses to stop the identified current model unless `--allow-self-stop` is supplied. Agents should add that override only after an explicit user request and warning.
+Для разрушительных команд жизненного цикла `llwmctl` выполняет эту проверку идентичности автоматически. Он отказывается останавливать идентифицированную текущую модель, если не указан `--allow-self-stop`. Агенты должны добавлять этот флаг только после явного запроса пользователя и предупреждения.
 
-## Model lifecycle
+## Жизненный цикл моделей
 
-List registered models and runtimes:
+Список зарегистрированных моделей и сред выполнения:
 
 ```powershell
 llwmctl models list
 llwmctl runtimes list
 ```
 
-Load with a saved profile:
+Загрузка с сохранённым профилем:
 
 ```powershell
 llwmctl load "Qwen3 30B Q4_K_M" --profile CUDA --wait
 ```
 
-Apply one-shot overrides:
+Применение разовых переопределений:
 
 ```powershell
 llwmctl load qwen3-30b-q4-k-m `
@@ -75,15 +75,15 @@ llwmctl load qwen3-30b-q4-k-m `
   --wait
 ```
 
-Persist the effective overrides into the selected profile:
+Сохранение действующих переопределений в выбранный профиль:
 
 ```powershell
 llwmctl restart qwen3-30b-q4-k-m --profile CUDA --set contextSize=131072 --save-profile=CUDA-128K --wait
 ```
 
-Without `--save-profile`, overrides never modify the saved profile. If a model is already running, `load` returns its current session; use `restart` to apply different settings.
+Без `--save-profile` переопределения никогда не изменяют сохранённый профиль. Если модель уже запущена, `load` возвращает её текущую сессию; для применения других настроек используйте `restart`.
 
-Other lifecycle commands:
+Прочие команды жизненного цикла:
 
 ```powershell
 llwmctl unload <model>
@@ -92,11 +92,11 @@ llwmctl models import --folder D:\ExternalModels\ModelFolder
 llwmctl models delete <model> --confirm
 ```
 
-App-owned deletion removes the Manager-owned model directory. Imported/external models are unregistered without deleting the external model folder.
+Удаление, инициированное приложением, удаляет каталог модели, принадлежащий Менеджеру. Импортированные/внешние модели снимаются с регистрации без удаления внешней папки модели.
 
-## Model groups, retention, and eviction priority
+## Группы моделей, удержание и приоритет вытеснения
 
-Groups are optional retention-policy containers assigned to launch profiles. They do not select a runtime, sampling settings, a default profile, or request priority. An ungrouped launch profile inherits the global `autoUnloadIdleMinutes` setting, and different profiles of the same model can belong to different groups.
+Группы — это необязательные контейнеры политики удержания, назначаемые профилям запуска. Они не выбирают среду выполнения, настройки сэмплирования, профиль по умолчанию или приоритет запросов. Профиль запуска без группы наследует глобальную настройку `autoUnloadIdleMinutes`, а разные профили одной и той же модели могут принадлежать разным группам.
 
 ```powershell
 llwmctl groups list
@@ -110,29 +110,29 @@ llwmctl groups unassign <model> <profile-id-or-name>
 llwmctl groups delete "Batch"
 ```
 
-Retention modes:
+Режимы удержания:
 
-- `inherit` uses the global idle timeout. Its group eviction priority still applies.
-- `pinned` prevents automatic idle unload.
-- `idle-timeout` uses the group's own `idleMinutes` value from 1 through 10080, including when the global timeout is `0` (disabled).
+- `inherit` использует глобальный таймаут простоя. Приоритет вытеснения группы при этом всё равно применяется.
+- `pinned` предотвращает автоматическую выгрузку по простою.
+- `idle-timeout` использует собственное значение `idleMinutes` группы от 1 до 10080, в том числе когда глобальный таймаут равен `0` (отключён).
 
-Eviction priority is ordered `low`, `normal`, then `high`. When multiple non-processing sessions become idle-eligible together, the Manager unloads one lowest-priority candidate per telemetry refresh. It never uses this value to reorder inference requests, and active slots are not idle candidates. Pinned retention does not block an explicit unload/delete/shutdown/update or the gateway's **Single active** policy; those operations keep their existing confirmation and self-preservation behavior.
+Приоритет вытеснения упорядочен как `low`, затем `normal`, затем `high`. Когда несколько сессий без обработки одновременно становятся кандидатами на выгрузку по простою, Менеджер выгружает по одному кандидату с наименьшим приоритетом за каждое обновление телеметрии. Это значение никогда не используется для переупорядочивания запросов на вывод, и активные слоты не являются кандидатами на выгрузку по простою. Удержание pinned не блокирует явные выгрузку/удаление/завершение работы/обновление или политику **Single active** шлюза; эти операции сохраняют прежнее поведение подтверждения и самосохранения.
 
-Editing or renaming a group keeps its stable ID and launch-profile assignments. Deleting a group only removes its assignments. Model registrations, GGUF files, running sessions, and launch profiles are kept. In the UI, use the compact **Models > Groups…** table to create, edit, or delete a group and open **Profiles…** for multi-select add, move, or removal. In **Saved Launch Profiles**, use inline **Add** when ungrouped or click the assigned group name for **Change group…** and **Remove from group**; right-clicking a profile opens the general assignment flow.
+Редактирование или переименование группы сохраняет её стабильный идентификатор и назначения профилей запуска. Удаление группы лишь снимает её назначения. Регистрации моделей, GGUF-файлы, запущенные сессии и профили запуска сохраняются. В интерфейсе используйте компактную таблицу **Модели > Группы…** для создания, редактирования или удаления группы и откройте **Профили…** для добавления, перемещения или удаления с множественным выбором. В разделе **Сохранённые профили запуска** используйте встроенную кнопку **Добавить**, когда профиль не сгруппирован, или нажмите на имя назначенной группы для пунктов **Изменить группу…** и **Удалить из группы**; щелчок правой кнопкой по профилю открывает общий поток назначения.
 
-Overview lists groups in the Model selector. Clicking **Load** for a group validates every assigned runtime and port, rejects multiple profiles for the same physical model, and performs an aggregate VRAM preflight before starting anything. The VRAM check includes reclaimable memory from a running profile that will be replaced and retains a 1 GiB safety reserve. If telemetry is unavailable for a GPU-backed group or the full set does not fit, no group member is started. CPU-only groups do not require VRAM telemetry. This Overview batch action does not change the group's retention meaning or add request-routing priority; control clients can inspect `profileIds` from `groups get` and load the same saved profiles explicitly.
+Обзор выводит группы в селекторе моделей. Нажатие **Загрузить** для группы проверяет каждую назначенную среду выполнения и порт, отклоняет несколько профилей для одной и той же физической модели и выполняет совокупную предварительную проверку VRAM перед запуском чего-либо. Проверка VRAM включает освобождаемую память запущенного профиля, который будет заменён, и сохраняет резерв безопасности 1 ГиБ. Если телеметрия недоступна для группы на GPU или весь набор не помещается, ни один участник группы не запускается. Группам только на CPU телеметрия VRAM не требуется. Это пакетное действие в Обзоре не меняет смысл удержания группы и не добавляет приоритет маршрутизации запросов; управляющие клиенты могут получить `profileIds` из `groups get` и загрузить те же сохранённые профили явно.
 
-The corresponding HTTP routes are:
+Соответствующие HTTP-маршруты:
 
 - `GET|POST /api/v1/model-groups`
 - `GET|PATCH|DELETE /api/v1/model-groups/{group}`
 - `GET|PUT|DELETE /api/v1/models/{model}/profiles/{profile}/group`
 
-`{profile}` accepts a profile ID or name scoped to `{model}`. `PUT` takes `{ "group": "<group-id-or-name>" }`. `GET /api/v1/models`, `GET /api/v1/models/{model}`, and profile-list responses include `group` and `effectivePolicy` on every launch-profile object. Group objects expose `profileCount` and `profileIds`.
+`{profile}` принимает идентификатор или имя профиля в контексте `{model}`. `PUT` принимает `{ "group": "<group-id-or-name>" }`. Ответы `GET /api/v1/models`, `GET /api/v1/models/{model}` и списков профилей включают `group` и `effectivePolicy` в каждом объекте профиля запуска. Объекты групп предоставляют `profileCount` и `profileIds`.
 
-For compatibility with early v2.2 development builds, `/api/v1/models/{model}/group` still maps to that model's default launch profile, but it is not advertised by `capabilities`; new clients should use the profile-scoped route.
+Для совместимости с ранними сборочными версиями v2.2 маршрут `/api/v1/models/{model}/group` по-прежнему сопоставляется с профилем запуска модели по умолчанию, но не рекламируется в `capabilities`; новые клиенты должны использовать маршрут, ограниченный профилем.
 
-## Profiles and all launch settings
+## Профили и все настройки запуска
 
 ```powershell
 llwmctl profiles list --model <model>
@@ -141,49 +141,46 @@ llwmctl profiles update --model <model> --id <profile-id> --set temperature=0.7 
 llwmctl profiles delete --model <model> --id <profile-id>
 ```
 
-`llwmctl capabilities` returns the live schema for every `ModelLaunchSettings` and `AppSettings` property. Repeated `--set name=value` accepts booleans, integers, decimal numbers, strings, JSON arrays/objects, and `null`. For a large patch:
+`llwmctl capabilities` возвращает актуальную схему для каждого свойства `ModelLaunchSettings` и `AppSettings`. Повторяющийся параметр `--set name=value` принимает булевы значения, целые и десятичные числа, строки, JSON-массивы/объекты и `null`. Для большого набора изменений:
 
 ```powershell
 llwmctl profiles update --model <model> --id <profile-id> --settings-file profile-patch.json
 ```
 
-The full profile surface includes runtime and port, context, GPU layers/mode/devices/split, parallelism, batches, threads, flash attention, K/V cache types and offload, prompt cache, checkpoints, continuous batching, reasoning mode/format/effort/budget/budget-message/preservation controls, template options, vision image tokens, mmap/mlock, sampling and penalties, RoPE, speculative mode and draft controls, vision/MTP/draft paths, metrics, and validated custom parameters. Reasoning effort is passed to the llama.cpp chat template; non-default levels only affect models and templates that support them.
+Полная поверхность профиля включает среду выполнения и порт, контекст, GPU-слои/режим/устройства/разбиение, параллелизм, пакеты, потоки, flash attention, типы K/V-кэша и выгрузку, кэш промптов, контрольные точки, непрерывный батчинг, режим/формат/усилия/бюджет/сообщение бюджета/контроль сохранения рассуждений, параметры шаблона, токены изображений для vision, mmap/mlock, сэмплирование и штрафы, RoPE, спекулятивный режим и управление драфт-моделями, пути vision/MTP/драфт-моделей, метрики и проверенные пользовательские параметры. Усилия рассуждений передаются в чат-шаблон llama.cpp; значения, отличные от стандартного, влияют только на модели и шаблоны, которые их поддерживают.
 
-## Shared model-serving gateway
+## Общий шлюз обслуживания моделей
 
-The OpenAI-compatible gateway is separate from the control API. When enabled, query its model catalog with `GET http://127.0.0.1:<gateway-port>/v1/models`. Every saved launch profile is returned as a separate model entry:
+OpenAI-совместимый шлюз отделён от управляющего API. Когда он включён, запросите его каталог моделей через `GET http://127.0.0.1:<gateway-port>/v1/models`. Каждый сохранённый профиль запуска возвращается как отдельная запись модели:
 
-The gateway authenticates this catalog and all inference requests. Direct
-llama.cpp inference also requires the configured model API key, although some
-upstream builds expose health or model-catalog metadata without authentication.
+Шлюз аутентифицирует этот каталог и все запросы на вывод. Прямой вывод llama.cpp также требует настроенный ключ API модели, хотя некоторые вышестоящие сборки раскрывают метаданные состояния или каталога моделей без аутентификации.
 
-- The default profile uses the model id.
-- A named profile uses `<model-id>--<profile-id>`, with the profile segment normalized for use in a URL/model field. If two stored ids normalize to the same value, each route receives a deterministic hash suffix.
+- Профиль по умолчанию использует идентификатор модели.
+- Именованный профиль использует `<model-id>--<profile-id>`, при этом сегмент профиля нормализуется для использования в URL/поле модели. Если два сохранённых идентификатора нормализуются в одно значение, каждый маршрут получает детерминированный хеш-суффикс.
 
-Send the returned id in the `model` field of an OpenAI-compatible request. The gateway loads the selected profile automatically, proxies to its direct llama.cpp port, and restarts an already-running copy of the same GGUF when a different profile is requested. Concurrent requests for one profile remain concurrent, while a different-profile request waits for their upstream responses to complete before switching. This contract is client-neutral; the Manager does not discover or edit third-party harness configuration.
+Отправляйте возвращённый идентификатор в поле `model` OpenAI-совместимого запроса. Шлюз автоматически загружает выбранный профиль, проксирует запросы на его прямой порт llama.cpp и перезапускает уже запущенную копию того же GGUF, когда запрашивается другой профиль. Одновременные запросы к одному профилю остаются параллельными, тогда как запрос к другому профилю ожидает завершения их вышестоящих ответов перед переключением. Этот контракт нейтрален к клиенту; Менеджер не обнаруживает и не изменяет конфигурацию сторонних обвязок.
 
-## Vision, draft, and MTP heads
+## Vision-, драфт- и MTP-головы
 
-List every eligible companion in the model's exact folder rather than only the
-first auto-detected file:
+Выводит список всех подходящих компаньонов в точной папке модели, а не только первого автоматически обнаруженного файла:
 
 ```powershell
 llwmctl models companions <model>
 ```
 
-Select an external vision head:
+Выбор внешнего vision-модуля:
 
 ```powershell
 llwmctl profiles update --model <model> --id <profile-id> --set visionProjectorPath=D:\Models\mmproj-f16.gguf
 ```
 
-Use embedded vision:
+Использование встроенного vision:
 
 ```powershell
 llwmctl profiles update --model <model> --id <profile-id> --set visionProjectorPath=embedded
 ```
 
-Configure upstream draft MTP or an Atomic MTP head:
+Настройка вышестоящей драфт-модели MTP или головы Atomic MTP:
 
 ```powershell
 llwmctl profiles update --model <model> --id <profile-id> `
@@ -195,27 +192,13 @@ llwmctl profiles update --model <model> --id <profile-id> `
   --set mtpHeadPath=D:\Models\mtp-head.gguf
 ```
 
-Use an empty string for automatic discovery. The response separates `mtpHeads`,
-`dflashHeads`, `dsparkHeads`, `eagle3Heads`, and `simpleDraftModels`, and reports
-`autoDiscoveryScope` plus the `draftMtpAutoPrecedence` rule. The legacy
-`draftAndMtpHeads` aggregate remains for compatibility.
+Используйте пустую строку для автоматического обнаружения. Ответ разделяет `mtpHeads`, `dflashHeads`, `dsparkHeads`, `eagle3Heads` и `simpleDraftModels`, а также сообщает `autoDiscoveryScope` и правило `draftMtpAutoPrecedence`. Устаревший агрегат `draftAndMtpHeads` сохраняется для совместимости.
 
-For `draft-mtp`, an empty draft-model path first checks the main GGUF for a
-positive `*.nextn_predict_layers` metadata value. When present, the Manager uses
-the embedded MTP tensors and deliberately omits `--model-draft`. Otherwise it
-searches the exact model folder for an MTP sidecar. Every other `draft-*` mode
-searches only its own sidecar type, so DSpark, DFlash, Eagle3, MTP, and ordinary
-draft models are never substituted for one another. Recognizable conflicting
-family/version or target-size candidates are rejected; `draft-simple` permits a
-smaller draft size. Explicit paths still take precedence and may be outside the
-model folder.
+Для `draft-mtp` пустой путь к драфт-модели сначала проверяет основной GGUF на наличие положительного значения метаданных `*.nextn_predict_layers`. Если оно есть, Менеджер использует встроенные MTP-тензоры и намеренно опускает `--model-draft`. В противном случае он ищет MTP-сайдкар в точной папке модели. Каждый другой режим `draft-*` ищет только свой тип сайдкара, поэтому DSpark, DFlash, Eagle3, MTP и обычные драфт-модели никогда не подставляются друг вместо друга. Распознаваемые конфликтующие кандидаты по семейству/версии или целевому размеру отклоняются; `draft-simple` допускает меньший размер драфт-модели. Явные пути по-прежнему имеют приоритет и могут находиться за пределами папки модели.
 
-Upstream llama.cpp normally uses a separate mmproj file for vision. Automatic
-vision discovery therefore selects a compatible mmproj/projector from the exact
-model folder. The `embedded` token is explicit rather than inferred and is only
-for compatible forks or specially packaged models; it omits `--mmproj`.
+Вышестоящий llama.cpp обычно использует отдельный файл mmproj для vision. Поэтому автоматическое обнаружение vision выбирает совместимый mmproj/проектор из точной папки модели. Токен `embedded` задаётся явно, а не выводится, и предназначен только для совместимых форков или специально упакованных моделей; он опускает `--mmproj`.
 
-## Metrics and logs
+## Метрики и журналы
 
 ```powershell
 llwmctl sessions list
@@ -228,16 +211,9 @@ llwmctl logs list
 llwmctl logs tail llama-server-example.log --tail 80000
 ```
 
-`sessions inspect` asks the Manager to probe the selected model's `/health`,
-`/v1/models`, `/props`, and `/slots` endpoints with the stored model-serving API
-key. `gateway inspect` does the same for the shared gateway's `/health`,
-`/v1/models`, and `/running` endpoints. Both return normalized reports without
-exposing that key. Metrics responses
-include raw parsed Prometheus samples, metric type/help metadata, endpoint
-responsiveness, and the current `/slots` snapshot. Log responses are bounded and
-redact the configured model API key and common bearer/command-line secret patterns.
+`sessions inspect` просит Менеджер опросить конечные точки `/health`, `/v1/models`, `/props` и `/slots` выбранной модели, используя сохранённый ключ API обслуживания моделей. `gateway inspect` делает то же самое для конечных точек `/health`, `/v1/models` и `/running` общего шлюза. Оба возвращают нормализованные отчёты, не раскрывая этот ключ. Ответы метрик включают необработанные разобранные выборки Prometheus, метаданные типа/описания метрик, отзывчивость конечной точки и текущий снимок `/slots`. Ответы журналов ограничены по размеру и редактируют настроенный ключ API модели и типовые шаблоны секретов в bearer-токенах и командных строках.
 
-## Hugging Face downloads and jobs
+## Загрузки Hugging Face и задания
 
 ```powershell
 llwmctl hf search "Qwen Q4_K_M"
@@ -249,9 +225,9 @@ llwmctl jobs resume <job-id>
 llwmctl jobs cancel <job-id>
 ```
 
-The existing Manager download pipeline remains responsible for filename safety, byte-count/SHA-256 validation, resumable partials, companion projector discovery, registration, launch-profile suggestions, and UI/job updates.
+Существующий конвейер загрузок Менеджера по-прежнему отвечает за безопасность имён файлов, проверку количества байтов/SHA-256, возобновляемые частичные загрузки, обнаружение проекторов-компаньонов, регистрацию, предложения профилей запуска и обновления интерфейса/заданий.
 
-## Application settings
+## Настройки приложения
 
 ```powershell
 llwmctl settings get
@@ -260,39 +236,27 @@ llwmctl settings set --set showOverviewLiveRuntimeLog=false --set showOverviewAl
 llwmctl settings rotate-key
 ```
 
-Settings changes are persisted through the Manager, applied to the live UI, and update Start with Windows. The gateway restarts only when a gateway, access, authentication, or API-key field changes. API-key material is redacted. The running process workspace root is immutable; model API keys can only be rotated, not retrieved or injected through a general patch.
+Изменения настроек сохраняются через Менеджер, применяются к живому интерфейсу и обновляют автозапуск с Windows. Шлюз перезапускается только при изменении полей шлюза, доступа, аутентификации или ключа API. Материал ключей API редактируется (redact). Корень рабочей области запущенного процесса неизменяем; ключи API моделей можно только ротировать, но нельзя получить или внедрить через общий набор изменений.
 
-The **UI** settings are independent booleans: `showOverviewModelStatus`,
-`showOverviewHardware`, `showOverviewSlots`, `showOverviewTokens`,
-`showOverviewMtpTokens`, `showOverviewKvCache`,
-`showOverviewLiveRuntimeLog`, `showOverviewAllMetrics`, and
-`showModelsHuggingFace`. They immediately show or collapse the corresponding
-Overview or Models surface and persist across restarts. They do not disable
-collection, downloads, or control-API access to logs and metrics.
+Настройки **интерфейса** — независимые булевы значения: `showOverviewModelStatus`, `showOverviewHardware`, `showOverviewSlots`, `showOverviewTokens`, `showOverviewMtpTokens`, `showOverviewKvCache`, `showOverviewLiveRuntimeLog`, `showOverviewAllMetrics` и `showModelsHuggingFace`. Они немедленно показывают или сворачивают соответствующую поверхность Обзора или Моделей и сохраняются между перезапусками. Они не отключают сбор, загрузки или доступ через управляющий API к журналам и метрикам.
 
-| Setting | Visible target | Default |
+| Настройка | Отображаемый элемент | По умолчанию |
 | --- | --- | --- |
-| `showOverviewModelStatus` | Model status card | `true` |
-| `showOverviewHardware` | Hardware card | `true` |
-| `showOverviewSlots` | Slots card | `true` |
-| `showOverviewTokens` | Tokens card | `true` |
-| `showOverviewMtpTokens` | Speculative tokens card | `true` |
-| `showOverviewKvCache` | KV cache card | `true` |
-| `showOverviewLiveRuntimeLog` | Live Runtime Log section | `true` |
-| `showOverviewAllMetrics` | All llama.cpp Metrics table | `false` |
-| `showModelsHuggingFace` | Hugging Face search and download history on Models | `false` |
+| `showOverviewModelStatus` | Карточка статуса модели | `true` |
+| `showOverviewHardware` | Карточка оборудования | `true` |
+| `showOverviewSlots` | Карточка слотов | `true` |
+| `showOverviewTokens` | Карточка токенов | `true` |
+| `showOverviewMtpTokens` | Карточка спекулятивных токенов | `true` |
+| `showOverviewKvCache` | Карточка KV-кэша | `true` |
+| `showOverviewLiveRuntimeLog` | Раздел журнала среды выполнения в реальном времени | `true` |
+| `showOverviewAllMetrics` | Таблица всех метрик llama.cpp | `false` |
+| `showModelsHuggingFace` | История поиска и загрузок Hugging Face на странице «Модели» | `false` |
 
-The response from `settings set` reports the persisted settings result. Follow
-with `settings get` when an automation needs an explicit read-after-write
-check. When every status card is false the whole Model Status card area is
-collapsed. When the log, raw metrics, or Hugging Face section is false, its grid
-row and splitter are collapsed as well. Workspaces created by an older version
-have no stored value for these fields; missing values use the defaults in the
-table above.
+Ответ `settings set` сообщает результат сохранения настроек. Если автоматизации нужна явная проверка «чтение после записи», выполните затем `settings get`. Когда все карточки статуса равны false, вся область карточек статуса модели сворачивается. Когда раздел журнала, необработанных метрик или Hugging Face равен false, сворачиваются также его строка сетки и разделитель. В рабочих областях, созданных старой версией, для этих полей нет сохранённых значений; отсутствующие значения используют значения по умолчанию из таблицы выше.
 
-## Complete application operations
+## Полный набор операций приложения
 
-The operation registry exposes the Manager functions available to local automation:
+Реестр операций предоставляет функции Менеджера, доступные локальной автоматизации:
 
 ```powershell
 llwmctl operations list
@@ -303,8 +267,7 @@ llwmctl operations run windows.status
 llwmctl operations run wsl.setup --set action=InstallUbuntuCudaToolkit --set distro=Ubuntu-24.04 --dry-run
 ```
 
-Source downloads are check-gated. Discover the exact schemas with `operations
-list`, then use the same staged flow as the Runtimes table:
+Загрузки исходных кодов проходят проверку-гейт. Узнайте точные схемы через `operations list`, затем используйте тот же поэтапный поток, что и таблица Сред выполнения:
 
 ```powershell
 llwmctl operations run runtime-source.check --set preset=official-windows-cuda
@@ -312,16 +275,15 @@ llwmctl operations run runtime-source.download --set preset=official-windows-cud
 llwmctl operations run runtime-build.start --set preset=official-windows-cuda --confirm
 ```
 
-Use the downloaded source identifier returned by the live catalog when the
-operation schema requires one; live capabilities are authoritative.
+Когда схема операции требует идентификатор, используйте идентификатор загруженного исходного кода, возвращённый актуальным каталогом; актуальные capabilities являются авторитетным источником.
 
-The registry covers runtime packages, custom repositories, source downloads/builds, runtime job controls, Windows/WSL detection and setup, gateway lifecycle, cache/log/download-history maintenance, lifetime metrics, UI navigation, update checks/installation, refresh, and shutdown. `llwmctl capabilities` and `llwmctl operations list` are authoritative.
+Реестр охватывает пакеты сред выполнения, пользовательские репозитории, загрузки/сборки исходных кодов, управление заданиями сред выполнения, обнаружение и настройку Windows/WSL, жизненный цикл шлюза, обслуживание кэша/журналов/истории загрузок, метрики за всё время, навигацию по интерфейсу, проверку/установку обновлений, обновление и завершение работы. Авторитетными источниками являются `llwmctl capabilities` и `llwmctl operations list`.
 
-Operations marked `requiresConfirmation` reject execution without `confirm=true`. Every operation accepts `dryRun=true`; dry-run validates the action and target and returns its planned consequence without mutation. Machine setup launches can open elevated or interactive terminals and report `Started`, not installation completion.
+Операции, помеченные `requiresConfirmation`, отклоняют выполнение без `confirm=true`. Каждая операция принимает `dryRun=true`; dry-run проверяет действие и цель и возвращает планируемое последствие без изменений. Запуски настройки машины могут открывать терминалы с повышением прав или интерактивные терминалы и сообщать `Started`, а не завершение установки.
 
-## HTTP route summary
+## Сводка HTTP-маршрутов
 
-The complete live route and settings list is returned by `GET /api/v1/capabilities`. Principal routes include:
+Полный актуальный список маршрутов и настроек возвращается через `GET /api/v1/capabilities`. Основные маршруты включают:
 
 - `GET /api/v1/status`, `/capabilities`, `/self`
 - `GET /api/v1/models`, `/runtimes`, `/sessions`, `/metrics`, `/logs`, `/jobs`
@@ -332,14 +294,14 @@ The complete live route and settings list is returned by `GET /api/v1/capabiliti
 - `PUT|DELETE /api/v1/models/{model}/profiles/{profile}`
 - `GET /api/v1/models/{model}/companions`
 - `GET|PATCH /api/v1/settings`
-- `GET /api/v1/huggingface/search` and `POST /api/v1/huggingface/download`
-- `GET /api/v1/operations` and `POST /api/v1/operations/{operation}`
+- `GET /api/v1/huggingface/search` и `POST /api/v1/huggingface/download`
+- `GET /api/v1/operations` и `POST /api/v1/operations/{operation}`
 
-For uncommon or future routes, use the raw client while retaining discovery and authentication:
+Для редких или будущих маршрутов используйте низкоуровневый клиент, сохраняя обнаружение и аутентификацию:
 
 ```powershell
 llwmctl request GET /api/v1/capabilities
 llwmctl request POST /api/v1/models/MODEL/load --body '{"waitForReady":true}'
 ```
 
-Raw requests sent through `llwmctl request` still enforce the CLI's current-session protection for model unload/restart/delete, `unloadOthers`, and operations that can stop the active runtime or Manager. `--allow-self-stop` is required for the same explicitly authorized cases as the named commands; CLI raw mode is not a safety bypass.
+Сырые запросы, отправляемые через `llwmctl request`, по-прежнему применяют защиту текущей сессии CLI для выгрузки/перезапуска/удаления моделей, `unloadOthers` и операций, которые могут остановить активную среду выполнения или Менеджер. `--allow-self-stop` требуется в тех же явно авторизованных случаях, что и для именованных команд; сырой режим CLI не является обходом безопасности.

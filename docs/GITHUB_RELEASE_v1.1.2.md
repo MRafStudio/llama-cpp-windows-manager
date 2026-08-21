@@ -1,76 +1,87 @@
-# GitHub Release v1.1.2
+# Релиз GitHub v1.1.2
 
-Historical notes for the published v1.1.2 release. The current release draft,
-including the auto-load gateway, scoped LAN exposure, grouped Settings
-navigation, preserved Overview load-time display, Start with Windows, explicit
-Vision head selection, and removal of the built-in OpenCode integration, is
-tracked in `docs/GITHUB_RELEASE_NEXT.md`.
+Исторические заметки опубликованного релиза v1.1.2. Текущий черновик релиза,
+включая шлюз автозагрузки, ограниченную доступность из LAN, группированную
+навигацию в настройках, сохранённое отображение времени загрузки на странице
+«Обзор», запуск вместе с Windows, явный выбор Vision-проектора и удаление
+встроенной интеграции OpenCode, ведётся в `docs/GITHUB_RELEASE_NEXT.md`.
 
-This release renames **llama.cpp Console** to **llama.cpp Windows Manager** and
-turns the app into a multi-runtime, multi-model Windows manager for
-`llama.cpp`. The normal path is now simple: install an official prebuilt
-runtime, choose Windows or WSL per model, and load one or more models on stable
-endpoints. Source builds are still available when you need custom or advanced
-runtime work.
+Этот релиз переименовывает **llama.cpp Console** в **llama.cpp Windows Manager**
+и превращает приложение в менеджер Windows с поддержкой нескольких сред
+выполнения и моделей для `llama.cpp`. Обычный путь теперь прост: установите
+официальную готовую среду выполнения, выберите Windows или WSL для каждой
+модели и загрузите одну или несколько моделей на стабильных конечных точках.
+Сборки из исходников по-прежнему доступны, когда нужны кастомные или
+расширенные работы со средой выполнения.
 
-## Highlights
+## Основные изменения
 
-- Added official prebuilt `llama.cpp` runtime downloads as the main workflow.
-- Renamed the app to **llama.cpp Windows Manager**.
-- Added native Windows runtime support alongside Ubuntu/WSL runtimes.
-- Added a CUDA download preference in **Runtimes** so users can choose the
-  newest CUDA package or the CUDA 12 compatibility package when upstream
-  publishes both.
-- Added Intel Arc GPU support through SYCL runtime choices for Windows and WSL
-  when upstream packages and the local driver/tool stack support them.
-- Added multi-model loading: run more than one model at the same time on
-  separate saved model ports when your hardware has enough capacity.
-- Added stable per-model OpenCode endpoints using separate local providers, so
-  OpenCode can address concurrently served models across app sessions.
-- Source downloads and builds remain available behind **Runtimes > Show
-  advanced**.
-- Windows and WSL Linux setup pages moved under **Tools**, since they are now
-  advanced setup/troubleshooting pages rather than the normal first-run path.
-- The Overview page now focuses on loaded model sessions, model size, state,
-  runtime, endpoint, and live metrics for the selected model.
-- Settings now keeps API key **Show**, **Copy**, and **Generate** actions in one
-  compact action cell.
+- Добавлены загрузки официальных готовых сред выполнения `llama.cpp` как
+  основной рабочий процесс.
+- Приложение переименовано в **llama.cpp Windows Manager**.
+- Добавлена поддержка нативных сред выполнения Windows наряду со средами
+  Ubuntu/WSL.
+- Добавлено предпочтение загрузки CUDA на странице **Среды выполнения**, чтобы
+  пользователи могли выбрать новейший пакет CUDA или пакет совместимости
+  CUDA 12, когда вышестоящий проект публикует оба.
+- Добавлена поддержка GPU Intel Arc через варианты среды SYCL для Windows и WSL,
+  когда вышестоящие пакеты и локальный стек драйверов/инструментов это
+  поддерживают.
+- Добавлена загрузка нескольких моделей: можно одновременно запускать более
+  одной модели на отдельных сохранённых портах моделей, если ёмкость
+  оборудования позволяет.
+- Добавлены стабильные конечные точки OpenCode для каждой модели через
+  отдельные локальные провайдеры, чтобы OpenCode мог обращаться к одновременно
+  обслуживаемым моделям из разных сессий приложения.
+- Загрузки исходников и сборки остаются доступными за **Среды выполнения >
+  Показать расширенные**.
+- Страницы настройки Windows и WSL Linux перенесены в раздел **Инструменты**, так
+  как теперь это страницы расширенной настройки/диагностики, а не обычный путь
+  первого запуска.
+- Страница **Обзор** теперь сосредоточена на загруженных сессиях моделей:
+  размере модели, состоянии, среде выполнения, конечной точке и живых метриках
+  выбранной модели.
+- В настройках действия с API-ключом **Показать**, **Копировать** и **Создать**
+  собраны в одну компактную ячейку действий.
 
-## Recommended Workflow
+## Рекомендуемый порядок работы
 
-1. Open **Runtimes**.
-2. Install the official prebuilt runtime you want: Windows or WSL, then CPU,
-   CUDA, Vulkan, or Intel Arc SYCL.
-3. Open **Models**, download or register a GGUF model, and save its runtime and
-   model port.
-4. Open **Overview** and load one or more models.
-5. Open **OpenCode** only if you want the app to write local model entries for
-   OpenCode.
+1. Откройте **Среды выполнения**.
+2. Установите нужную официальную готовую среду: Windows или WSL, затем CPU,
+   CUDA, Vulkan или Intel Arc SYCL.
+3. Откройте **Модели**, загрузите или зарегистрируйте модель GGUF и сохраните
+   её среду выполнения и порт модели.
+4. Откройте **Обзор** и загрузите одну или несколько моделей.
+5. Откройте **OpenCode** только если хотите, чтобы приложение записывало
+   локальные записи моделей для OpenCode.
 
-Use **Tools > Windows**, **Tools > WSL Linux**, and **Runtimes > Show advanced**
-only for source builds, custom runtime branches, missing toolchains, or deeper
-troubleshooting.
+Используйте **Инструменты > Windows**, **Инструменты > WSL Linux** и
+**Среды выполнения > Показать расширенные** только для сборок из исходников,
+кастомных веток сред выполнения, отсутствующих инструментариев или более
+глубокой диагностики.
 
-## Compatibility
+## Совместимость
 
-- Windows 10/11 x64 desktop app.
-- Native Windows `llama-server.exe` runtimes.
-- Ubuntu/WSL `llama-server` runtimes.
-- CPU fallback plus GPU runtimes for NVIDIA CUDA, Vulkan-capable devices, and
-  Intel Arc SYCL where supported.
+- Настольное приложение Windows 10/11 x64.
+- Нативные среды выполнения `llama-server.exe` для Windows.
+- Среды выполнения `llama-server` для Ubuntu/WSL.
+- Запасной вариант CPU плюс GPU-среды для NVIDIA CUDA, устройств с поддержкой
+  Vulkan и Intel Arc SYCL там, где это поддерживается.
 
-Official prebuilt package availability depends on the upstream `llama.cpp`
-release assets. GPU runtime success also depends on local drivers and WSL GPU
-visibility.
+Доступность официальных готовых пакетов зависит от артефактов релизов
+вышестоящего `llama.cpp`. Успех GPU-сред также зависит от локальных драйверов
+и видимости GPU в WSL.
 
-## Upgrade Notes
+## Примечания по обновлению
 
-- Existing app data, models, runtimes, logs, cache, and settings are preserved
-  by installer update/repair.
-- Existing `llama.cpp Console` links on GitHub redirect to the renamed
-  repository, and legacy portable-update paths remain supported by the v1.1.2
-  zip.
-- Existing models can keep using their saved launch settings; per-model ports
-  are now the preferred way to keep OpenCode endpoints stable.
-- If you previously built runtimes from source, you can keep them or install the
-  matching official prebuilt runtime from **Runtimes**.
+- Существующие данные приложения, модели, среды выполнения, журналы, кэш и
+  настройки сохраняются при обновлении/восстановлении установщика.
+- Существующие ссылки на `llama.cpp Console` на GitHub перенаправляются на
+  переименованный репозиторий, а легаси-пути переносимого обновления остаются
+  поддерживаемыми zip-архивом v1.1.2.
+- Существующие модели могут продолжать использовать свои сохранённые настройки
+  запуска; порты для каждой модели теперь предпочтительный способ сохранить
+  стабильность конечных точек OpenCode.
+- Если вы ранее собирали среды выполнения из исходников, вы можете оставить их
+  или установить соответствующую официальную готовую среду со страницы
+  **Среды выполнения**.

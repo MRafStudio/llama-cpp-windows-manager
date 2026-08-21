@@ -1,159 +1,94 @@
-# Release Hardening Audit
+# Аудит усиления релиза
 
-Audit date: 2026-08-15
+Дата аудита: 2026-08-15
 
-## Executive Summary
+## Резюме для руководства
 
-Overall release posture: **v2.2.0 passes the repository's automated build,
-test, coverage, vulnerability, portable-publish, sidecar-bootstrap, and
-installer gates. Public artifacts must still come from the protected signed
-release workflow, and clean-machine plus hardware-matrix validation remains a
-manual release requirement.**
+Общая готовность релиза: **v2.2.0 проходит автоматизированные ворота репозитория: сборку, тесты, покрытие, уязвимости, portable-публикацию, sidecar-загрузку и установщик. Публичные артефакты по-прежнему должны выпускаться через защищённый подписанный релизный workflow, а валидация на чистой машине и матрице оборудования остаётся ручным требованием релиза.**
 
-The core release blockers from the full audit have been addressed in code:
+Основные блокеры релиза из полного аудита устранены в коде:
 
-- Release build and self-contained publish verify on .NET SDK 10.0.400 with the current .NET 10 servicing runtime.
-- Automated release-hardening tests now cover concurrent SQLite access, corrupt settings recovery, deletion boundaries, and runtime host validation.
-- SQLite access is serialized and settings saves are transactional.
-- Corrupt settings are backed up before defaults are restored; corrupt DB files are quarantined and recreated.
-- The workspace is fixed at process startup instead of being editable at runtime.
-- Job IDs use GUIDs.
-- Hugging Face downloads are bounded to the models folder, block duplicate destinations, reject unsafe local filenames and partial-file links, preflight disk space, and require expected-size or SHA-256 verification before model registration.
-- Model serving now requires a strong API key even in local-only mode, and the persisted key is protected with current-user Windows data protection.
-- Control-surface settings mutation is isolated behind validation that rejects
-  auth disablement, protected-field replacement, invalid ranges, and gateway
-  ports already occupied by running models.
-- Auto-load gateway request bodies are bounded and oversized payloads return a
-  `413 request_too_large` response before proxying.
-- Runtime source IDs loaded from custom JSON are sanitized, and recursive runtime deletes are path-bounded.
-- WSL shutdown no longer uses a broad port-only kill, and WSL cleanup now
-  verifies whether the targeted runtime stopped and logs failures for diagnosis.
-- The WSL Linux page now detects WSL, installed non-Docker distros, the default distro, and shows focused WSL/Ubuntu install or update actions.
-- Release publish omits PDB files and supports certificate signing with `-CertificateThumbprint` and `-RequireSigned`.
-- App update checks are staged through the workspace cache; the app and control
-  CLI are copied to verified sibling files and atomically replaced after the
-  running process closes, with rollback if either replacement fails.
-- App update staging verifies a matching SHA-256 companion asset when present and requires same-certificate signature continuity when the installed app is already signed.
-- Runtime onboarding is prebuilt-first: official llama.cpp release packages can
-  be installed directly before using source builds.
-- Runtime package downloads verify expected sizes and SHA-256 metadata or
-  companion checksum files before installation.
-- The Windows and WSL setup workflows now cover CPU, CUDA, Vulkan, and Intel
-  Arc SYCL prerequisites before source builds start.
-- Per-model launch settings now include vision image token allowances and map them to llama.cpp server flags.
-- Per-model ports and loaded model sessions allow more than one model endpoint
-  to stay available when hardware capacity allows it.
-- Model-group edits replace definitions and profile assignments in one SQLite
-  transaction. Group launch pre-stops every replaced session to support
-  cross-port swaps and restores original profiles if a later target fails.
-- The auto-load gateway provides one shared OpenAI-compatible endpoint, routes
-  by requested model id, starts models on their saved direct ports, and exposes
-  policy controls for keeping loaded sessions or switching to one active model.
-- LAN exposure is scoped by Settings so users can expose only the gateway, only
-  direct model endpoints, both, or neither.
-- Per-model launch profiles now support saved variants, auto-detected,
-  embedded/model-bundled, or explicit vision head/projector choices, vision
-  image token allowances and separate MTP head choices for compatible runtimes.
-- Embedded positive NextN/MTP metadata now prevents an unrelated external draft
-  model from being injected, and automatic companion selection rejects
-  incompatible model families, versions, and parameter sizes.
-- The shared gateway publishes one client-neutral route per saved launch profile
-  and never edits third-party harness configuration.
-- Fresh installer setups offer Start with Windows by default, with a matching
-  current-user startup preference in Settings.
-- Settings use compact two-column category grids with readable editors, narrow
-  dropdowns, row-local actions, and automatic persistence. The **UI** category
-  controls all six Overview status cards, the live runtime log, raw llama.cpp
-  metrics, and the Models Hugging Face section. Hidden areas reflow without
-  blank rows or splitters while underlying services remain active.
-- Overview preserves completed model load duration as a separate Loading Time
-  row after a model becomes ready.
-- Per-monitor-v2 DPI handling constrains the initial window to the monitor work
-  area, and the Overview selector bar plus metric cards reflow at narrow widths.
-  Metric cards remain in a readable two-column layout at the default window
-  width and switch to three columns only when 1140 px of page content is
-  available; the loaded-session Runtime column receives additional space.
-- Nineteen language packs meet the production coverage floor; Arabic and Hindi
-  are disclosed as partial previews, and Arabic/Persian apply right-to-left flow
-  to the shell and owned dialogs. Model Groups, Endpoint Inspection, their
-  validation messages, and their live status messages are localized in all 21
-  packs with placeholder parity tests.
-- Custom window controls, status announcements, section headings, and grid row
-  actions now expose WPF automation metadata verified by an STA smoke test.
-- In-app Help is now a compact searchable task catalog with six focused
-  categories, progressively disclosed articles, API/authentication guidance,
-  contextual page actions, keyboard search, accessible result announcements,
-  and a complete 21-pack resource contract. Eleven packs include translated
-  Help articles; the other nine non-English packs fall back to English for the
-  new Help content instead of exposing resource keys.
-- Loaded model endpoints can be inspected through `llwmctl sessions inspect`;
-  the Manager applies its stored serving credential internally and returns only
-  the normalized health/capability report.
-- Portable/installer outputs ship the project license, full Apache-2.0 terms,
-  third-party notices, and .NET license/notices. Executable-only sidecar
-  bootstrap restores the same compliance files.
-- The protected signed-release workflow pins GitHub actions to immutable commit
-  SHAs and installs a pinned Inno Setup version before certificate import.
-- The local app service now keeps request handlers observed and tolerates
-  bounded transient listener errors instead of silently faulting the listener
-  loop.
-- MainWindow shell ownership is guarded: runtime control workflows, theme
-  resources, visual traversal, and accessibility helpers have dedicated owners,
-  redundant shell UI factories were removed, and no MainWindow partial may
-  exceed 300 nonblank lines.
+- Релизная сборка и автономная (self-contained) публикация проверяются на .NET SDK 10.0.400 с текущим servicing-рантаймом .NET 10.
+- Автоматизированные тесты усиления релиза теперь покрывают конкурентный доступ к SQLite, восстановление повреждённых настроек, границы удаления и валидацию хоста рантайма.
+- Доступ к SQLite сериализован, а сохранение настроек транзакционно.
+- Повреждённые настройки резервируются до восстановления значений по умолчанию; повреждённые файлы БД помещаются в карантин и пересоздаются.
+- Рабочая область фиксируется при запуске процесса, а не редактируется во время работы.
+- ID заданий используют GUID.
+- Загрузки Hugging Face ограничены папкой моделей, блокируют дублирующиеся назначения, отклоняют небезопасные локальные имена файлов и ссылки на частичные файлы, предварительно проверяют место на диске и требуют проверки ожидаемого размера или SHA-256 перед регистрацией модели.
+- Обслуживание моделей теперь требует надёжный API-ключ даже в локальном режиме, а сохранённый ключ защищён защитой данных Windows текущего пользователя.
+- Мутация настроек управляющей поверхности изолирована за валидацией, которая отклоняет отключение аутентификации, замену защищённых полей, недопустимые диапазоны и порты gateway, уже занятые работающими моделями.
+- Тела запросов gateway автозагрузки ограничены, и чрезмерно большие полезные нагрузки получают ответ `413 request_too_large` до проксирования.
+- ID исходников рантайма, загруженные из пользовательского JSON, санируются, а рекурсивные удаления рантайма ограничены по путям.
+- Остановка WSL больше не использует широкое завершение только по порту, а очистка WSL теперь проверяет, остановился ли целевой рантайм, и логирует сбои для диагностики.
+- Страница WSL Linux теперь обнаруживает WSL, установленные не-Docker дистрибутивы, дистрибутив по умолчанию и показывает сфокусированные действия установки или обновления WSL/Ubuntu.
+- Релизная публикация исключает PDB-файлы и поддерживает подпись сертификатом с `-CertificateThumbprint` и `-RequireSigned`.
+- Проверки обновлений приложения проходят через кэш рабочей области; приложение и управляющий CLI копируются в проверенные соседние файлы и атомарно заменяются после закрытия работающего процесса, с откатом, если любая из замен не удалась.
+- Подготовка обновления приложения проверяет соответствующий SHA-256 компаньон-ассет при его наличии и требует непрерывности подписи тем же сертификатом, если установленное приложение уже подписано.
+- Онбординг рантайма идёт от готовых сборок: официальные пакеты релизов llama.cpp можно устанавливать напрямую до использования сборок из исходников.
+- Загрузки пакетов рантайма проверяют ожидаемые размеры и метаданные SHA-256 или компаньон-файлы контрольных сумм перед установкой.
+- Рабочие процессы настройки Windows и WSL теперь покрывают предварительные условия CPU, CUDA, Vulkan и Intel Arc SYCL до начала сборок из исходников.
+- Настройки запуска на модель теперь включают допустимые количества токенов изображений для vision и сопоставляют их с флагами llama.cpp server.
+- Порты на модель и загруженные сеансы моделей позволяют держать доступными более одного endpoint модели, когда позволяет ёмкость оборудования.
+- Правки модельных групп заменяют определения и назначения профилей в одной транзакции SQLite. Запуск группы предварительно останавливает каждый заменяемый сеанс для поддержки переключений портов и восстанавливает исходные профили, если более поздняя цель не удалась.
+- Gateway автозагрузки предоставляет один общий OpenAI-совместимый endpoint, маршрутизирует по запрошенному id модели, запускает модели на их сохранённых прямых портах и предоставляет элементы управления политикой: держать загруженные сеансы или переключаться на одну активную модель.
+- Доступ по LAN ограничивается настройками Settings, поэтому пользователи могут открывать только gateway, только прямые endpoints моделей, оба или ни одного.
+- Профили запуска на модель теперь поддерживают сохранённые варианты, автоматически обнаруженный, встроенный/входящий в комплект модели или явный выбор vision head/projector, допустимые количества токенов изображений и отдельные выборы MTP head для совместимых рантаймов.
+- Встроенные положительные метаданные NextN/MTP теперь предотвращают внедрение посторонней внешней draft-модели, а автоматический выбор компаньона отклоняет несовместимые семейства моделей, версии и размеры параметров.
+- Общий gateway публикует по одному нейтральному для клиентов маршруту на каждый сохранённый профиль запуска и никогда не редактирует конфигурацию сторонних обвязок (harness).
+- Свежие установки из установщика предлагают автозапуск с Windows (Start with Windows) по умолчанию, с соответствующей настройкой автозапуска текущего пользователя в Settings.
+- Настройки используют компактные двухколоночные сетки категорий с читаемыми редакторами, узкими выпадающими списками, действиями в строках и автоматическим сохранением. Категория **UI** управляет всеми шестью карточками статуса Overview, живым логом рантайма, сырыми метриками llama.cpp и секцией Hugging Face страницы Models. Скрытые области перестраиваются без пустых строк или разделителей, а базовые сервисы остаются активными.
+- Overview сохраняет длительность завершённой загрузки модели как отдельную строку Loading Time после готовности модели.
+- Обработка DPI per-monitor-v2 ограничивает начальное окно рабочей областью монитора, а панель выбора Overview и карточки метрик перестраиваются при узких ширинах. Карточки метрик сохраняют читаемую двухколоночную раскладку при ширине окна по умолчанию и переходят на три колонки только при наличии 1140 px контента страницы; колонка Runtime загруженных сеансов получает дополнительное пространство.
+- Девятнадцать языковых пакетов достигают минимального производственного порога покрытия; арабский и хинди указаны как частичные превью, а арабский/персидский применяют направление справа налево к оболочке и собственным диалогам. Model Groups, Endpoint Inspection, их сообщения валидации и живые сообщения статуса локализованы во всех 21 пакетах с тестами паритета плейсхолдеров.
+- Пользовательские элементы управления окна, объявления статуса, заголовки секций и действия строк сетки теперь предоставляют метаданные автоматизации WPF, проверяемые STA smoke-тестом.
+- Встроенная справка теперь представляет собой компактный доступный для поиска каталог задач с шестью сфокусированными категориями, постепенно раскрываемыми статьями, руководством по API/аутентификации, контекстными действиями страниц, поиском с клавиатуры, доступными объявлениями результатов и полным контрактом ресурсов на 21 пакет. Одиннадцать пакетов включают переведённые статьи справки; остальные девять неанглийских пакетов для нового контента справки возвращаются к английскому вместо отображения ключей ресурсов.
+- Endpoints загруженных моделей можно инспектировать через `llwmctl sessions inspect`; Manager внутренне применяет сохранённое обслуживающее учётное данное и возвращает только нормализованный отчёт о здоровье/возможностях.
+- Portable/установочные артефакты включают лицензию проекта, полные условия Apache-2.0, уведомления о сторонних компонентах и лицензии/уведомления .NET. Загрузка sidecar только из исполняемого файла восстанавливает те же файлы соответствия.
+- Защищённый подписанный релизный workflow фиксирует GitHub actions на неизменяемых SHA коммитов и устанавливает зафиксированную версию Inno Setup перед импортом сертификата.
+- Локальный сервис приложения теперь держит обработчики запросов под наблюдением и терпит ограниченные временные ошибки слушателя вместо молчаливого сбоя цикла слушателя.
+- Право собственности оболочки MainWindow защищено: рабочие процессы управления рантаймом, ресурсы тем, визуальный обход дерева и хелперы доступности имеют отдельных владельцев, избыточные UI-фабрики оболочки удалены, и ни одна partial-часть MainWindow не может превышать 300 непустых строк.
 
-## Remaining External Hardening Work
+## Оставшаяся внешняя работа по усилению
 
-### Clean Windows VM validation
+### Валидация на чистой Windows VM
 
-- Severity: High
-- Area: Installation and onboarding
-- Status: Follow-up hardening
-- Required result: Published app launches with no repository checkout, creates state, shows clear prerequisite guidance, and does not require a developer SDK.
+- Серьёзность: Высокая
+- Область: установка и онбординг
+- Статус: последующее усиление
+- Требуемый результат: опубликованное приложение запускается без клонирования репозитория, создаёт состояние, показывает понятные указания по предварительным условиям и не требует SDK разработчика.
 
-### Trusted signing and distribution
+### Надёжная подпись и распространение
 
-- Severity: High for reducing Windows trust warnings
-- Area: Distribution and trust
-- Status: Portable single-exe publish and Inno Setup installer source exist; signing support exists; certificate is not present in this repo. The current public release is unsigned and labeled as such.
-- Required result: A future trusted release is signed with a trusted certificate and distributed as a signed portable zip or installer with shortcut/uninstall flow.
+- Серьёзность: высокая (для снижения предупреждений доверия Windows)
+- Область: распространение и доверие
+- Статус: существуют публикация portable single-exe и исходники установщика Inno Setup; поддержка подписи есть; сертификат в этом репозитории отсутствует. Текущий публичный релиз не подписан и помечен как таковой.
+- Требуемый результат: будущий доверенный релиз подписан доверенным сертификатом и распространяется как подписанный portable zip или установщик с потоком ярлыка/деинсталляции.
 
-### GitHub update feed
+### Лента обновлений GitHub
 
-- Severity: Medium
-- Area: Distribution
-- Status: Update UI, staged installer, checksum verification, signed-app
-  signature continuity, and rollback-safe app/CLI replacement are implemented;
-  the public repository and v2.2.0 asset naming are confirmed.
-- Required result: Latest GitHub release contains
-  `LlamaCppWindowsManager-win-x64.zip`, the standalone
-  `LlamaCppWindowsManager.exe` required by v1.x/v2.0/v2.1 updaters, matching SHA-256
-  companion assets, and release notes suitable for the completion popup.
+- Серьёзность: средняя
+- Область: распространение
+- Статус: реализованы UI обновлений, поэтапный установщик, проверка контрольных сумм, непрерывность подписи подписанного приложения и безопасная с точки зрения отката замена приложения/CLI; подтверждены публичный репозиторий и именование ассетов v2.2.0.
+- Требуемый результат: последний релиз GitHub содержит `LlamaCppWindowsManager-win-x64.zip`, автономный `LlamaCppWindowsManager.exe`, необходимый обновляторам v1.x/v2.0/v2.1, соответствующие SHA-256 компаньон-ассеты и заметки о выпуске, подходящие для всплывающего окна завершения.
 
-### WSL and hardware matrix
+### WSL и матрица оборудования
 
-- Severity: Medium
-- Area: llama.cpp runtime/build support
-- Status: Requires manual hardware coverage
-- Required result: Validate missing WSL, missing distro, CPU build, missing Git/CMake/compiler, CUDA-visible WSL, Vulkan-visible WSL, Intel Arc/SYCL-visible Windows and WSL, and unsupported backend paths.
-- Added support: The app can detect installed non-Docker distros and guide WSL install/update, Ubuntu install/update, CPU tools, CUDA Toolkit, Vulkan tool setup, Intel GPU runtime setup, and Intel oneAPI setup from the WSL Linux page. The Windows page detects native CPU/CUDA/Vulkan/SYCL tool readiness.
+- Серьёзность: средняя
+- Область: поддержка рантайма/сборок llama.cpp
+- Статус: требует ручного покрытия оборудования
+- Требуемый результат: провалидировать отсутствие WSL, отсутствие дистрибутива, сборку CPU, отсутствие Git/CMake/компилятора, WSL с видимой CUDA, WSL с видимым Vulkan, Windows и WSL с видимым Intel Arc/SYCL, а также пути неподдерживаемых бэкендов.
+- Добавленная поддержка: приложение может обнаруживать установленные не-Docker дистрибутивы и направлять установку/обновление WSL, установку/обновление Ubuntu, инструменты CPU, CUDA Toolkit, настройку инструментов Vulkan, настройку рантайма Intel GPU и настройку Intel oneAPI со страницы WSL Linux. Страница Windows обнаруживает готовность нативных инструментов CPU/CUDA/Vulkan/SYCL.
 
-### Runtime/archive authenticity verification
+### Проверка подлинности рантаймов/архивов
 
-- Severity: Medium
-- Area: Third-party binaries
-- Status: Prebuilt runtime downloads are installed from their configured package
-  sources, including official GitHub release assets and selected fork binary
-  feeds, then locally fingerprinted for source/prebuilt equivalence where
-  possible. Package authenticity still depends on the package source transport
-  and release trust unless matching trusted upstream checksums or signatures
-  become available.
-- Required result: Prefer trusted upstream checksums or signatures for runtime
-  archives when upstream publishes them.
+- Серьёзность: средняя
+- Область: сторонние бинарники
+- Статус: готовые загрузки рантайма устанавливаются из настроенных источников пакетов, включая официальные ассеты GitHub Releases и выбранные каналы бинарников форков, затем локально снимается отпечаток для определения эквивалентности исходных/готовых сборок там, где это возможно. Подлинность пакетов по-прежнему зависит от транспорта источника пакетов и доверия к релизу, пока не появятся соответствующие доверенные контрольные суммы или подписи upstream.
+- Требуемый результат: предпочитать доверенные контрольные суммы или подписи upstream для архивов рантайма, когда upstream их публикует.
 
-## Automated Checks
+## Автоматизированные проверки
 
-Current passing checks:
+Текущие проходящие проверки:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\test-release-gate.ps1 -IncludePublish -IncludeInstaller
@@ -164,81 +99,48 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\publish-app.ps
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1 -SkipPublish
 ```
 
-The latest source architecture/release pass on 2026-08-15 ran
-`scripts/test-release-gate.ps1 -IncludePublish -IncludeInstaller`, which wraps the Release build,
-release-hardening suite, coverage enforcement, formatting verification,
-`git diff --check`, direct-package vulnerability/deprecation/currency checks,
-the portable packaging gate, and the installer gate. Service/unit tests passed (`548/548`) and the
-WPF smoke test passed (`1/1`) with no skips. The build completed with zero
-warnings; Services coverage was 80.9% and Models + ViewModels coverage was
-97.4%. The portable publish, embedded operator/control sidecar, and installer
-checks passed. The resulting local artifacts are intentionally unsigned.
+Последний проход архитектуры/релиза исходников 2026-08-15 выполнил `scripts/test-release-gate.ps1 -IncludePublish -IncludeInstaller`, который оборачивает релизную сборку, набор тестов усиления релиза, контроль покрытия, проверку форматирования, `git diff --check`, проверки уязвимостей/устаревания/актуальности прямых пакетов, ворота portable-упаковки и ворота установщика. Сервисные/модульные тесты прошли (`548/548`), WPF smoke-тест прошёл (`1/1`) без пропусков. Сборка завершилась без предупреждений; покрытие Services составило 80.9%, а Models + ViewModels — 97.4%. Проверки portable-публикации, встроенного операторского/управляющего sidecar и установщика прошли. Полученные локальные артефакты намеренно не подписаны.
 
-## Post-v1.1.2 Hardening
+## Усиление после v1.1.2
 
-After publishing `v1.1.2`, a follow-up bug-report triage fixed the actionable
-low-risk items that were safe to take immediately:
+После публикации `v1.1.2` последующая триаж-обработка баг-репортов исправила выполнимые пункты низкого риска, которые было безопасно взять немедленно:
 
-- Runtime backend inference now prefers explicit packaged metadata and nearby
-  runtime files over loose folder/path text, avoiding false CUDA/SYCL/Vulkan
-  classification from names like `cuda-backup`.
-- `LlamaProcessSupervisor` runtime state transitions are now atomic/volatile
-  across process output callbacks, readiness checks, and exit handling.
-- `LogFileService.Head` now detects byte-order marks like `Tail` already did.
-- `GgufMetadataReader` now ignores unsupported/future GGUF versions instead of
-  silently parsing unknown metadata layouts.
-- Runtime package and portable app update archives are now prevalidated for
-  absolute paths, traversal paths, and unsafe tar link/device entries before
-  extraction.
-- Runtime package downloads now require size/checksum verification metadata and
-  delete failed downloads after verification errors.
-- The auto-load gateway now rejects oversized request bodies with `413` instead
-  of buffering unbounded client payloads.
-- WSL runtime cleanup now returns and logs verification details instead of
-  swallowing all stop failures.
-- Release scripts can be run with `-RequireCleanTree` so publish, installer, and
-  release-gate packaging fail on dirty worktrees.
-- Overview runtime metrics now use compact aggregate token monitors and
-  60-sample trend graphs for normal, speculative, and KV-cache streams. Slot
-  fallback totals survive parallel task resets without double counting, while
-  the live Slots card reports active capacity. Hardware reports CPU telemetry,
-  normalized hardware metric separators, and vendor-neutral Windows GPU fallback
-  summaries for AMD/Intel/Vulkan systems.
-- Overview Model Status now separates Loading/Loaded Model from Loading Time and
-  keeps the completed load duration visible after startup.
-- Settings now renders polished two-column category grids, integrates actions
-  only into their owning value rows, persists edits automatically, and provides
-  per-surface Overview and Models visibility in a dedicated **UI** category.
+- Вывод бэкенда рантайма теперь предпочитает явные метаданные пакета и близлежащие файлы рантайма свободному тексту папок/путей, избегая ложной классификации CUDA/SYCL/Vulkan по именам вроде `cuda-backup`.
+- Переходы состояния рантайма `LlamaProcessSupervisor` теперь атомарны/volatile во всех колбэках вывода процесса, проверках готовности и обработке завершения.
+- `LogFileService.Head` теперь обнаруживает метки порядка байтов (BOM), как это уже делал `Tail`.
+- `GgufMetadataReader` теперь игнорирует неподдерживаемые/будущие версии GGUF вместо молчаливого разбора неизвестных раскладок метаданных.
+- Архивы пакетов рантайма и обновлений portable-приложения теперь предварительно валидируются на абсолютные пути, пути обхода (traversal) и небезопасные записи tar-ссылок/устройств перед распаковкой.
+- Загрузки пакетов рантайма теперь требуют метаданные проверки размера/контрольной суммы и удаляют неудачные загрузки после ошибок проверки.
+- Gateway автозагрузки теперь отклоняет чрезмерно большие тела запросов с `413` вместо буферизации неограниченных полезных нагрузок клиентов.
+- Очистка рантайма WSL теперь возвращает и логирует детали проверки вместо проглатывания всех ошибок остановки.
+- Релизные скрипты можно запускать с `-RequireCleanTree`, чтобы публикация, установщик и упаковка release-gate завершались ошибкой на грязных рабочих деревьях.
+- Метрики рантайма в Overview теперь используют компактные агрегированные мониторы токенов и графики трендов на 60 выборок для обычных, спекулятивных потоков и KV-cache. Резервные итоги слотов переживают сбросы параллельных задач без двойного подсчёта, а живая карточка Slots сообщает об активной ёмкости. Аппаратные отчёты включают телеметрию CPU, нормализованные разделители аппаратных метрик и не зависящие от вендора резервные сводки GPU Windows для систем AMD/Intel/Vulkan.
+- Статус модели в Overview теперь отделяет Loading/Loaded Model от Loading Time и держит длительность завершённой загрузки видимой после запуска.
+- Настройки теперь отображают аккуратные двухколоночные сетки категорий, встраивают действия только в их собственные строки значений, сохраняют правки автоматически и предоставляют видимость Overview и Models по поверхностям в отдельной категории **UI**.
 
-Verification for this hardening pass:
+Проверка этого прохода усиления:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\test-release-gate.ps1 -IncludePublish -IncludeInstaller
 ```
 
-Result on 2026-06-01: release-hardening tests passed (`432/432`), formatting was
-clean, the Release build succeeded with zero warnings, no vulnerable packages
-were found, the diff had no whitespace errors, and publish/installer artifact
-checks passed locally.
+Результат на 2026-06-01: тесты усиления релиза прошли (`432/432`), форматирование чистое, релизная сборка успешна без предупреждений, уязвимых пакетов не найдено, в diff нет ошибок пробелов, проверки артефактов публикации/установщика прошли локально.
 
-## Edge Cases To Keep Testing
+## Граничные случаи, которые нужно продолжать тестировать
 
-- No internet during Hugging Face search or download.
-- Slow internet with cancellation during a large GGUF download.
-- Interrupted app shutdown during model download or llama.cpp build.
-- Disk full during download, build, extract, or SQLite write.
-- Missing WSL, missing configured Ubuntu distro, or WSL disabled.
-- Git, CMake, compiler, CUDA, Vulkan, or Intel oneAPI/SYCL missing inside Ubuntu.
-- Permission denied for workspace, models, runtime, or cache folders.
-- Invalid, partial, renamed, or moved GGUF model files.
-- Missing or deleted llama-server executable after registration.
-- Manually edited or corrupt SQLite/settings state.
-- Unicode, spaces, long paths, and non-default drive letters.
-- Third-party OpenAI-compatible clients with stale model ids or credentials.
+- Отсутствие интернета во время поиска или загрузки Hugging Face.
+- Медленный интернет с отменой во время большой загрузки GGUF.
+- Прерванное завершение работы приложения во время загрузки модели или сборки llama.cpp.
+- Заполненный диск во время загрузки, сборки, распаковки или записи SQLite.
+- Отсутствующий WSL, отсутствующий настроенный дистрибутив Ubuntu или отключённый WSL.
+- Отсутствующие внутри Ubuntu Git, CMake, компилятор, CUDA, Vulkan или Intel oneAPI/SYCL.
+- Отказ в правах для папок рабочей области, моделей, рантайма или кэша.
+- Недопустимые, частичные, переименованные или перемещённые GGUF-файлы моделей.
+- Отсутствующий или удалённый исполняемый файл llama-server после регистрации.
+- Вручную отредактированное или повреждённое состояние SQLite/настроек.
+- Unicode, пробелы, длинные пути и нестандартные буквы дисков.
+- Сторонние OpenAI-совместимые клиенты с устаревшими id моделей или учётными данными.
 
-## Release Decision
+## Решение о релизе
 
-v2.2.0 is acceptable for release after the protected workflow produces signed
-portable and installer artifacts and the manual clean-machine checklist is
-completed. Local unsigned artifacts are suitable only for testing and must
-remain labelled unsigned.
+v2.2.0 допустим к релизу после того, как защищённый workflow выпустит подписанные portable- и установочные артефакты и будет выполнен ручной чек-лист чистой машины. Локальные неподписанные артефакты пригодны только для тестирования и должны оставаться помеченными как неподписанные.

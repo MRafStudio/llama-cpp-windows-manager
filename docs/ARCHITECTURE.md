@@ -1,31 +1,31 @@
-# Target Architecture
+# Целевая архитектура
 
-Last reviewed: 2026-08-15
+Последняя ревизия: 2026-08-15
 
-## Boundary
+## Границы
 
-The release target is Windows-first and self-contained for the UI, with llama.cpp running either as a native Windows `llama-server.exe` or inside Ubuntu/WSL. The repo owns code and process control:
+Целевой релиз ориентирован в первую очередь на Windows и автономен для UI: llama.cpp работает либо как нативный Windows-процесс `llama-server.exe`, либо внутри Ubuntu/WSL. Репозиторий владеет кодом и управлением процессами:
 
-- .NET 10 WPF desktop shell
-- single app instance per Windows user session
-- Local app service with per-session auth token
-- serialized SQLite state store
-- hidden process supervisor for native Windows or Ubuntu/WSL `llama-server`
-- local-only model serving by default, with an API key required for inference and scoped LAN exposure for gateway and/or direct model ports; upstream health or catalog metadata may remain public
-- hidden runtime-package/source-build/download jobs
-- Windows and WSL/Linux environment detectors and setup launchers
-- GitHub release update checker with staged portable-exe install
-- PowerShell build script only when the user starts a build
-- App-owned cache and temporary staging folders
+- оболочка (shell) рабочего стола на .NET 10 WPF
+- единственный экземпляр приложения на сеанс пользователя Windows
+- локальный сервис приложения с токеном аутентификации на сеанс
+- сериализованное хранилище состояния SQLite
+- скрытый супервизор процессов для нативного Windows или Ubuntu/WSL `llama-server`
+- обслуживание моделей только локально по умолчанию; для инференса требуется API-ключ, предусмотрено ограниченное (scoped) предоставление доступа по LAN для портов gateway и/или прямых портов моделей; метаданные upstream о здоровье сервиса или каталоге могут оставаться публичными
+- скрытые задания по пакетам рантайма / сборке из исходников / загрузкам
+- детекторы окружения Windows и WSL/Linux и лаунчеры настройки
+- проверка обновлений GitHub Releases с поэтапной установкой portable-exe
+- PowerShell-скрипт сборки — только когда пользователь сам запускает сборку
+- кэш и временные папки для промежуточных файлов, принадлежащие приложению
 
-The repo does not own large data by default:
+Репозиторий по умолчанию не владеет большими данными:
 
-- GGUF models
-- downloaded/extracted llama.cpp builds
+- модели GGUF
+- скачанные/распакованные сборки llama.cpp
 
-The startup workspace is fixed for the process and defaults to `data` beside `LlamaCppWindowsManager.exe` when that location is writable. If not, it falls back to `%LocalAppData%\llama.cpp Windows Manager`, while reusing `%LocalAppData%\llama.cpp Console` or `%LocalAppData%\LocalLlmConsole` only when those legacy folders already exist. It can be overridden with `LLAMA_CPP_WINDOWS_MANAGER_WORKSPACE` before launch; `LLAMA_CPP_CONSOLE_WORKSPACE` and `LOCAL_LLM_CONSOLE_WORKSPACE` remain accepted as legacy aliases. Models and runtimes are configured in App Settings and stored in SQLite. Cache data is kept inside the fixed workspace and is not exposed as a separate Settings folder. The source tree contains the WPF app, the `llwmctl` control CLI, tests, docs, and the helper script used for llama.cpp builds. Release builds embed the CLI and operator/control sidecars in the app executable and restore verified copies beside it at startup.
+Рабочая область (workspace) фиксирована для процесса и по умолчанию равна `data` рядом с `LlamaCppWindowsManager.exe`, если это расположение доступно для записи. В противном случае выполняется откат к `%LocalAppData%\llama.cpp Windows Manager`; папки `%LocalAppData%\llama.cpp Console` и `%LocalAppData%\LocalLlmConsole` переиспользуются только в том случае, если они уже существуют. Рабочую область можно переопределить переменной `LLAMA_CPP_WINDOWS_MANAGER_WORKSPACE` до запуска; `LLAMA_CPP_CONSOLE_WORKSPACE` и `LOCAL_LLM_CONSOLE_WORKSPACE` по-прежнему принимаются как устаревшие (legacy) псевдонимы. Модели и рантаймы настраиваются в настройках приложения (App Settings) и хранятся в SQLite. Данные кэша находятся внутри фиксированной рабочей области и не выделяются в отдельную папку настроек. Исходное дерево содержит WPF-приложение, управляющий CLI `llwmctl`, тесты, документацию и вспомогательный скрипт для сборок llama.cpp. Релизные сборки встраивают CLI и операторские/управляющие sidecar-компоненты в исполняемый файл приложения и при запуске восстанавливают рядом с ним проверенные копии.
 
-## Runtime Shape
+## Структура рантайма
 
 ```mermaid
 flowchart LR
@@ -48,247 +48,162 @@ flowchart LR
   UI --> Updates["GitHub Releases"]
 ```
 
-## State And Recovery
+## Состояние и восстановление
 
-Current:
+Текущее состояние:
 
-1. SQLite operations are serialized inside `StateStore` so UI timers, downloads, and localhost API reads do not share the connection concurrently.
-2. Schema migrations are applied idempotently and recorded in the `migrations` table.
-3. Settings saves are transactional.
-4. Bad settings rows are backed up under `state\corrupt-settings` and replaced with defaults.
-5. Corrupt database files are quarantined under `state\corrupt-database-*` and recreated on startup.
-6. Startup keeps the workspace root immutable for the running process.
-7. Completed app updates write a pending notice under the workspace cache so the relaunched app can show release notes and then delete the notice.
-8. Model-group definitions and launch-profile assignments are replaced in one
-   SQLite transaction; a failed constraint or write leaves the previous group
-   snapshot intact.
+1. Операции SQLite сериализованы внутри `StateStore`, поэтому таймеры UI, загрузки и чтения через локальный API не используют одно соединение одновременно.
+2. Миграции схемы применяются идемпотентно и фиксируются в таблице `migrations`.
+3. Сохранение настроек транзакционно.
+4. Повреждённые строки настроек сохраняются в резервную копию под `state\corrupt-settings` и заменяются значениями по умолчанию.
+5. Повреждённые файлы баз данных помещаются в карантин под `state\corrupt-database-*` и пересоздаются при запуске.
+6. При запуске корень рабочей области остаётся неизменным (immutable) для запущенного процесса.
+7. Завершённые обновления приложения записывают ожидающее уведомление в кэш рабочей области, чтобы перезапущенное приложение могло показать заметки о выпуске и затем удалить уведомление.
+8. Определения модельных групп и назначения профилей запуска заменяются в одной транзакции SQLite; сбой ограничения или записи оставляет предыдущий снимок группы нетронутым.
 
-## Architecture Contract
+## Архитектурный контракт
 
-Finished architecture means a feature can be changed through its feature module,
-application/workflow boundary, page UI layer, and focused tests without adding
-new behavior to `MainWindow` or guessing which service owns a decision.
+Завершённая архитектура означает, что функциональность можно изменять через её модуль, границу приложения/рабочего процесса, UI-слой страницы и целевые тесты, не добавляя новое поведение в `MainWindow` и не угадывая, какой сервис владеет решением.
 
-Dependency direction is intentionally one-way:
+Направление зависимостей сознательно одностороннее:
 
-1. Composition roots (`AppServiceFactory*` and `MainWindowServices`) create and
-   group services. `AppServiceFactory` is split by lifecycle stage:
-   infrastructure services, core shell services, loaded database-backed
-   services, catalog helpers, foundation helpers, runtime helpers, and
-   model-runtime/gateway helpers. They do not own feature behavior.
-2. `MainWindow` is the shell: navigation, app lifetime, foreground/background
-   execution wrappers, page hosting, and final UI result application.
-3. Page controllers adapt WPF events and page state to application services.
-   They may coordinate selection, timers, and reentrancy for a page, but should
-   not own domain rules.
-4. Page factories build WPF controls only. They should not call domain,
-   workflow, storage, process, network, or settings services.
-5. Page state classes hold WPF control references and apply simple visual state.
-   They should not perform business decisions, IO, or service calls.
-6. View models own observable rows, selected items, status/busy text, and
-   deterministic row projection. They should not launch processes, touch files,
-   or call remote APIs.
-7. Application services adapt domain/workflow results to UI-facing actions such
-   as busy runners, confirmations, status updates, refreshes, and selection.
-   UI callbacks belong at this boundary, not inside domain services.
-8. Workflow services own multi-step async flows, jobs, external command
-   sequences, and recovery/retry behavior. They return plans/results and stay
-   independent of WPF controls.
-9. Domain services own pure decisions and feature-specific rules. They should
-   return records, plans, rows, or validation outcomes instead of mutating UI.
-10. Infrastructure services own OS, filesystem, process, storage, HTTP,
-    security, formatting, and dialog primitives. They should not encode feature
-    policy beyond their narrow boundary.
+1. Композиционные корни (`AppServiceFactory*` и `MainWindowServices`) создают и группируют сервисы. `AppServiceFactory` разделён по стадиям жизненного цикла: инфраструктурные сервисы, базовые сервисы оболочки, загруженные сервисы на базе БД, хелперы каталога, фундаментальные хелперы, хелперы рантайма и хелперы модельного рантайма/gateway. Они не владеют поведением функциональности.
+2. `MainWindow` — это оболочка: навигация, время жизни приложения, обёртки выполнения на переднем/заднем плане, размещение страниц и применение конечных результатов UI.
+3. Контроллеры страниц адаптируют события WPF и состояние страницы к сервисам приложения. Они могут координировать выбор, таймеры и повторную входимость (reentrancy) для страницы, но не должны владеть доменными правилами.
+4. Фабрики страниц создают только элементы управления WPF. Они не должны вызывать доменные, рабочие (workflow), хранилищные, процессные, сетевые сервисы или сервисы настроек.
+5. Классы состояния страниц хранят ссылки на элементы управления WPF и применяют простое визуальное состояние. Они не должны принимать бизнес-решения, выполнять ввод-вывод или вызовы сервисов.
+6. View-модели владеют наблюдаемыми строками, выбранными элементами, текстом статуса/занятости и детерминированной проекцией строк. Они не должны запускать процессы, трогать файлы или вызывать удалённые API.
+7. Сервисы приложения адаптируют доменные/рабочие результаты к действиям, обращённым к UI: индикаторы занятости, подтверждения, обновления статуса, обновления данных и выделение. UI-колбэки принадлежат этой границе, а не доменным сервисам.
+8. Сервисы рабочих процессов владеют многошаговыми асинхронными потоками, заданиями, последовательностями внешних команд и поведением восстановления/повторов. Они возвращают планы/результаты и остаются независимыми от элементов управления WPF.
+9. Доменные сервисы владеют чистыми решениями и правилами, специфичными для функциональности. Они должны возвращать записи, планы, строки или результаты валидации вместо мутации UI.
+10. Инфраструктурные сервисы владеют примитивами ОС, файловой системы, процессов, хранилища, HTTP, безопасности, форматирования и диалогов. Они не должны кодировать политику функциональности за пределами своей узкой границы.
 
-Service naming should describe ownership:
+Имена сервисов должны описывать право собственности:
 
-- `*ApplicationService`: UI-facing workflow composition and side-effect
-  sequencing through explicit actions.
-- `*WorkflowService`: multi-step domain/process/job flow.
-- `*Controller`: stateful page/UI coordination, timers, reentrancy, or event
-  routing.
-- `*Factory`: construction of controls, services, or immutable request objects.
-- `*State`: control references or page/session state without business rules.
-- Plain `*Service`: focused domain or infrastructure behavior.
+- `*ApplicationService`: UI-ориентированная композиция рабочих процессов и упорядочивание побочных эффектов через явные действия.
+- `*WorkflowService`: многошаговый поток домена/процессов/заданий.
+- `*Controller`: координация страницы/UI с состоянием, таймеры, повторная входимость или маршрутизация событий.
+- `*Factory`: создание элементов управления, сервисов или неизменяемых объектов запросов.
+- `*State`: ссылки на элементы управления или состояние страницы/сеанса без бизнес-правил.
+- Простой `*Service`: сфокусированное доменное или инфраструктурное поведение.
 
-Splits and merges should follow responsibility, not aesthetics. Add a new type
-when it owns a real decision, state machine, external boundary, dependency set,
-or repeated behavior that would otherwise blur a module. Split a file when it
-has multiple stable reasons to change or multiple independently testable
-policies. Merge or delete pass-through services that only forward calls without
-adding policy, validation, state, adaptation, or boundary protection.
+Разделение и объединение должны следовать ответственности, а не эстетике. Добавляйте новый тип, когда он владеет реальным решением, конечным автоматом, внешней границей, набором зависимостей или повторяющимся поведением, которые иначе размыли бы модуль. Разделяйте файл, когда у него несколько устойчивых причин для изменения или несколько независимо тестируемых политик. Объединяйте или удаляйте транзитные (pass-through) сервисы, которые лишь пересылают вызовы, не добавляя политики, валидации, состояния, адаптации или защиты границ.
 
-Tests should protect behavior first. Source-shape tests are acceptable only for
-durable architectural guardrails: dependency direction, module placement,
-service composition, and deliberate absence of direct `MainWindow` or WPF
-coupling. They should not freeze incidental implementation strings when a
-behavior test can express the rule.
+Тесты должны в первую очередь защищать поведение. Тесты формы исходного кода допустимы только для устойчивых архитектурных ограничений: направления зависимостей, размещения модулей, композиции сервисов и намеренного отсутствия прямой связанности с `MainWindow` или WPF. Они не должны замораживать случайные строки реализации, когда правило можно выразить поведенческим тестом.
 
-## Current Service Boundaries
+## Текущие границы сервисов
 
-The WPF window is intentionally a shell: app lifetime, shell navigation, event
-brokerage, and final UI result application stay there. Reusable behavior is
-split into feature services, workflow/application services, view models, page
-state, and page controllers. Startup/shutdown wiring stays in
-`MainWindow.xaml.cs`; shell fields and loaded-service lifecycle holders stay in
-`MainWindow.State.cs`; page-specific row/event routing lives behind page
-controllers where a page has meaningful action wiring.
+Окно WPF намеренно является оболочкой: время жизни приложения, навигация оболочки, брокеридж событий и применение конечных результатов UI остаются там. Переиспользуемое поведение разделено на сервисы функциональности, сервисы рабочих процессов/приложения, view-модели, состояние страниц и контроллеры страниц. Связывание запуска/остановки остаётся в `MainWindow.xaml.cs`; поля оболочки и держатели жизненного цикла загруженных сервисов — в `MainWindow.State.cs`; маршрутизация строк/событий страниц живёт за контроллерами страниц там, где страница имеет значимую связку действий.
 
-`MainWindow` dependencies are grouped by ownership. Core services are read
-through named bundles (`App`, `Ui`, `Models`, `Runtime`,
-`HuggingFaceServices`, and `Environment`), and loaded services are read through
-their post-startup bundles (`App`, `Models`, `Gateway`, and `Runtime`). These
-bundle records intentionally do not expose flat pass-through aliases; the
-dependency graph should be readable by module.
+Зависимости `MainWindow` сгруппированы по владельцу. Базовые сервисы читаются через именованные наборы (bundles) (`App`, `Ui`, `Models`, `Runtime`, `HuggingFaceServices` и `Environment`), а загруженные сервисы — через их наборы после запуска (`App`, `Models`, `Gateway` и `Runtime`). Эти записи-наборы намеренно не предоставляют плоских транзитных псевдонимов; граф зависимостей должен читаться по модулям.
 
-Service files are grouped by feature instead of living in one flat folder. The
-top-level `Services` folder is reserved for composition/root wiring
-(`AppServiceFactory*` and `MainWindowServices`), while implementation code lives
-under `Services/App`, `Services/Environment`, `Services/Gateway`,
-`Services/HuggingFace`, `Services/Infrastructure`, `Services/Models`,
-and `Services/Runtimes`. UI factories and page state are
-similarly grouped under `Ui/Common` and `Ui/Pages/*`; larger UI factories such
-as `LaunchSettingsPanelFactory` are split into shell, section composition,
-control factories, picker menus, and layout helpers. `ModelGroupDialogFactory`
-is likewise split into manager, assignment, editor, and shared-helper partials.
-The current code keeps
-file-scoped namespaces stable; namespace tightening can happen module-by-module
-if it provides clear value.
+Файлы сервисов сгруппированы по функциональности, а не лежат в одной плоской папке. Папка верхнего уровня `Services` зарезервирована для композиции/корневого связывания (`AppServiceFactory*` и `MainWindowServices`), тогда как код реализации живёт в `Services/App`, `Services/Environment`, `Services/Gateway`, `Services/HuggingFace`, `Services/Infrastructure`, `Services/Models` и `Services/Runtimes`. UI-фабрики и состояние страниц аналогично сгруппированы в `Ui/Common` и `Ui/Pages/*`; крупные UI-фабрики, такие как `LaunchSettingsPanelFactory`, разделены на оболочку, композицию секций, фабрики элементов управления, меню выбора и хелперы разметки. `ModelGroupDialogFactory` аналогично разделён на partial-части менеджера, назначения, редактора и общих хелперов. Текущий код сохраняет стабильные file-scoped пространства имён; сужение пространств имён может выполняться по модулям, если это даёт явную пользу.
 
-- `MainWindowViewModel` and page view models (`OverviewPageViewModel`, `ModelsPageViewModel`, `RuntimesPageViewModel`, `RuntimePackagesPageViewModel`, `RuntimeBuildsPageViewModel`, `RuntimeMetricsViewModel`, `WindowsPageViewModel`, `WslLinuxPageViewModel`, `HuggingFacePageViewModel`, `JobsViewModel`, `LogsViewModel`, `SettingsPageViewModel`, `LaunchSettingsViewModel`, `UpdatesPageViewModel`, and `LifetimeMetricsViewModel`) own row collections, selection lists, status/busy state, and deterministic row projection for migrated pages.
-- `LocalControlApi`, `LocalControlDiscoveryService`, and `llwmctl` own the versioned loopback automation surface, current-user endpoint/token discovery, safe model self-identification, full typed setting patches, endpoint inspection without secret disclosure, and structured command output. `ControlAppSettingsMutationService` owns control-surface settings normalization, protected-field enforcement, mandatory API-key validation, and live port-conflict checks. `ControlRuntimeOperationApplicationService` owns runtime package/source/build/job operation dispatch and composes the existing runtime application services without placing those workflows in `MainWindow`. `ControlRequestAdmissionService` applies self-preservation rules, while `ControlOperationCatalog` exposes machine and application operations. `ControlApiAuditLogService` writes a bounded request audit containing only method, path, result status, and duration; `LogFileService` exposes it in the Logs page as Type **Control API**. Control actions reuse the same model/runtime services and dispatch UI synchronization through the shell bridge.
-- `StateStore`, `ModelGroupService`, `OverviewModelGroupLoadPlanningService`, `OverviewModelGroupLoadApplicationService`, `JobEngine`, and `SecretProtector` own durable state, transactional launch-profile-group replacement, validated membership/retention policy, group-load planning and rollback, jobs, protected settings, and persisted job-transition validation. A supervised session resolves policy through its stored launch-profile ID, allowing profiles of one model to differ. Legacy model-level assignments migrate to the model's default profile. Group loading validates the complete runtime/port/aggregate-VRAM plan before starting its first member, stops all sessions that must be replaced before cross-port swaps, and restores the original sessions if any target fails to start. Group eviction priority ranks automatic idle-unload candidates only; it is not an inference scheduler.
-- `ModelCatalogService`, `HuggingFaceService`, `HuggingFaceInstallStateService`, `HuggingFaceLaunchSettingsSuggester`, and `ModelCapabilityService` own model discovery, download lifecycle, exact-model-folder companion discovery, embedded NextN/MTP precedence, type-safe MTP/DFlash/DSpark/Eagle3/draft classification, matching mmproj/projector companion downloads, installed/download button state, README launch hints, and local model capability inference. Hugging Face launch suggestion parsing is split across config JSON parsing, README command extraction, shell tokenization, and option mapping.
-- `RuntimeRegistryService`, `RuntimeAdapter`, `RuntimeLaunchOptionSwitchService`, `RuntimeDeletionPlanner`, `RuntimeDeletionExecutorService`, `RuntimePackageSourceCatalog`, `RuntimePackageReleaseClient`, `RuntimePackageAssetSelector`, `RuntimePackageInstallFileService`, `RuntimePackageInventoryPresenter`, `RuntimeBuildCatalogService`, `RuntimeBuildJobService`, `RuntimeBuildToolService`, `RuntimeMetadataService`, `RuntimeEquivalenceService`, `RuntimeFileService`, `RuntimePortAllocator`, `ModelPortAllocator`, and `RuntimeEndpointService` own runtime discovery, launch validation, advertised positive/negative switch pairing, deletion planning, deletion execution, prebuilt package source/feed selection, release parsing, asset matching, extraction/metadata stamping, package inventory projection, source/build catalog metadata and remote-ref parsing, build job payload/log metadata, build-tool command construction, source/prebuilt equivalence, safe delete boundaries, model-server URLs, stable per-model ports, and served-model matching.
-- `LlamaProcessSupervisor`, `NativeRuntimeStopService`, `LlamaRuntimeOutputObserver`, `TrackedProcessRunner`, `WindowsEnvironmentService`, `WindowsSetupCommands`, `WslEnvironmentService`, `WslSetupCommands`, and `CommandLineService` own process supervision, native process stop verification, runtime stdout/stderr observation, tracked process execution, Windows and WSL detection/status/tool-probe parsing, setup/probe commands, and visible shell command quoting/launching.
-- `RuntimeMetrics`, `RuntimeDashboardService`, `GpuStatusService`, `LogFileService`, `FileSystemSafetyService`, `VramAdmissionService`, and `CacheMaintenanceService` own metrics parsing, live runtime dashboard math, CUDA/NVIDIA GPU summaries, Intel SYCL identification, vendor-neutral Windows GPU fallback summaries, log previews/classification/redaction/deletion planning, shared filesystem guardrails, conservative multi-model VRAM admission, and cache clearing safety.
-- `AppPreferenceService`, `DisplayFormatService`, `LaunchSettingMetadataService`, `LoadedModelSessionManager`, `ActiveRuntimeSessionStore`, `ModelRuntimeStatusTracker`, `ModelRuntimeStatusController`, `ModelRuntimeStatusRenderService`, `AppUpdateService`, `AppUpdateReleaseParser`, and `AppUpdateAssetVerifier` own settings option normalization, shared UI value formatting, launch-setting option/help/suggestion text, in-memory loaded-session state, running-runtime recovery state, transient model loading/loaded status timing, persisted completed load-duration display, GitHub release updates, release asset selection/version parsing, and update checksum verification.
-- `HelpCatalogService` owns the compact task-article catalog, section selection,
-  localized article projection, deterministic cross-topic search, and result ranking. `HelpPageController`,
-  `HelpPageState`, `HelpPageFactory`, and `HelpResultsFactory` own Help search
-  interaction, visual state, page composition, expandable result cards, and
-  contextual navigation without placing Help behavior in `MainWindow`.
-- `EndpointInspectionService` performs read-only, authenticated live inspection of direct model endpoints (`/health`, `/v1/models`, `/props`, and `/slots`) and the shared gateway (`/health`, `/v1/models`, and `/running`). It preserves partial results when a fork omits an optional endpoint. `EndpointInspectionDialogFactory` renders those normalized results without issuing inference requests; its complete surface and the Model Groups dialogs use the same 21-pack localization contract as the shell.
-- `OverviewPageState` applies persisted UI visibility preferences to individual
-  metric cards and the log/raw-metrics rows, and evaluates the selected
-  model/profile action state so Load is suppressed only when the running launch
-  profile matches the selected profile; `ModelsPageState` does the same for
-  the Hugging Face row. They collapse associated grid space and splitters while
-  leaving runtime observation and download services active.
-  `SettingsPageDefinitionService` projects the nine booleans into the compact
-  **UI** category, `AppSettingsUpdateService` validates the Show/Hide editor values,
-  and `StateStore.Settings` explicitly reads and writes each SQLite key. A
-  debounced `SettingsPageState` change notification persists valid edits and
-  reapplies page state without rebuilding the focused editor. Missing keys use
-  the documented per-surface defaults. The typed `AppSettings` control schema
-  exposes the same fields automatically.
-- `ModelGatewayService`, `ModelGatewayRequestAccessPolicy`, `ModelGatewayRequestResolver`, `ModelGatewayUpstreamProxy`, `ModelGatewayResponseWriter`, `GatewayModelLoadWorkflowService`, `GatewayRuntimeApplicationService`, `GatewayActivityStatusTracker`, and `GatewayActivityStatusController` own the shared auto-load router, access/CORS checks, model-id resolution, upstream proxying, client-facing response payloads, policy-aware load workflow, client-facing load failures, and Overview routing status.
-The largest service classes are also split by concern: `StateStore` separates catalog, model-group policy, settings, job persistence, and legacy launch-default migration; `HuggingFaceService` separates search, download lifecycle, safety verification, projector companion handling, and launch-profile suggestions; `LlamaProcessSupervisor` separates runtime lifecycle, launch helpers, and WSL cleanup helpers; `RuntimeBuildCatalogService` separates default presets, custom repository persistence, downloaded source metadata, preset row presentation, and backend/mode identity helpers; `RuntimeMetadataService` separates package metadata reads, preset inference, commit helpers, and runtime folder/package path helpers; `ModelGatewayService` delegates access policy, request/model resolution, upstream proxying, and response payloads to gateway helpers; `RuntimeDeletionPlanner` separates direct runtime, package, source-cache, and build-preset planning while `RuntimeDeletionExecutorService` performs state/filesystem mutation; `AppUpdateService` delegates release parsing and checksum verification to update helpers; and `ModelCatalogService` keeps legacy metadata parsing separate from normal scan/import/delete flows.
+- `MainWindowViewModel` и view-модели страниц (`OverviewPageViewModel`, `ModelsPageViewModel`, `RuntimesPageViewModel`, `RuntimePackagesPageViewModel`, `RuntimeBuildsPageViewModel`, `RuntimeMetricsViewModel`, `WindowsPageViewModel`, `WslLinuxPageViewModel`, `HuggingFacePageViewModel`, `JobsViewModel`, `LogsViewModel`, `SettingsPageViewModel`, `LaunchSettingsViewModel`, `UpdatesPageViewModel` и `LifetimeMetricsViewModel`) владеют коллекциями строк, списками выбора, состоянием статуса/занятости и детерминированной проекцией строк для мигрированных страниц.
+- `LocalControlApi`, `LocalControlDiscoveryService` и `llwmctl` владеют версионированной поверхностью автоматизации через loopback, обнаружением endpoint/токена текущего пользователя, безопасной самоидентификацией моделей, полными типизированными патчами настроек, инспекцией endpoint без раскрытия секретов и структурированным выводом команд. `ControlAppSettingsMutationService` владеет нормализацией настроек управляющей поверхности, защитой защищённых полей, обязательной валидацией API-ключа и проверками конфликтов портов в реальном времени. `ControlRuntimeOperationApplicationService` владеет диспетчеризацией операций с пакетами рантайма/исходниками/сборками/заданиями и компонует существующие сервисы приложения рантайма, не размещая эти рабочие процессы в `MainWindow`. `ControlRequestAdmissionService` применяет правила самосохранения, а `ControlOperationCatalog` предоставляет машинные и прикладные операции. `ControlApiAuditLogService` пишет ограниченный журнал аудита запросов, содержащий только метод, путь, статус результата и длительность; `LogFileService` показывает его на странице Logs как тип **Control API**. Управляющие действия переиспользуют те же сервисы моделей/рантайма и отправляют синхронизацию UI через мост оболочки.
+- `StateStore`, `ModelGroupService`, `OverviewModelGroupLoadPlanningService`, `OverviewModelGroupLoadApplicationService`, `JobEngine` и `SecretProtector` владеют долговечным состоянием, транзакционной заменой групп профилей запуска, валидированной политикой членства/хранения, планированием загрузки групп и откатом, заданиями, защищёнными настройками и валидацией сохранённых переходов заданий. Наблюдаемый (supervised) сеанс определяет политику через сохранённый ID профиля запуска, что позволяет профилям одной модели различаться. Устаревшие назначения на уровне моделей мигрируют в профиль модели по умолчанию. Загрузка группы валидирует полный план рантайма/портов/агрегированной VRAM до запуска первого члена, останавливает все сеансы, которые необходимо заменить перед переключением портов, и восстанавливает исходные сеансы, если какой-либо целевой не запустился. Приоритет вытеснения группы ранжирует только автоматических кандидатов на выгрузку по простою; это не планировщик инференса.
+- `ModelCatalogService`, `HuggingFaceService`, `HuggingFaceInstallStateService`, `HuggingFaceLaunchSettingsSuggester` и `ModelCapabilityService` владеют обнаружением моделей, жизненным циклом загрузок, поиском компаньонов точной папки модели, приоритетом встроенных NextN/MTP, типобезопасной классификацией MTP/DFlash/DSpark/Eagle3/draft, загрузкой подходящих компаньонов mmproj/projector, состоянием кнопок установки/загрузки, подсказками запуска из README и выводом о возможностях локальных моделей. Разбор предложений запуска Hugging Face разделён на разбор конфигурационного JSON, извлечение команд из README, токенизацию shell и сопоставление опций.
+- `RuntimeRegistryService`, `RuntimeAdapter`, `RuntimeLaunchOptionSwitchService`, `RuntimeDeletionPlanner`, `RuntimeDeletionExecutorService`, `RuntimePackageSourceCatalog`, `RuntimePackageReleaseClient`, `RuntimePackageAssetSelector`, `RuntimePackageInstallFileService`, `RuntimePackageInventoryPresenter`, `RuntimeBuildCatalogService`, `RuntimeBuildJobService`, `RuntimeBuildToolService`, `RuntimeMetadataService`, `RuntimeEquivalenceService`, `RuntimeFileService`, `RuntimePortAllocator`, `ModelPortAllocator` и `RuntimeEndpointService` владеют обнаружением рантаймов, валидацией запуска, объявленным спариванием положительных/отрицательных переключателей, планированием удаления, выполнением удаления, выбором источника/канала готовых пакетов, разбором релизов, сопоставлением ассетов, распаковкой/простановкой метаданных, проекцией инвентаря пакетов, метаданными каталога исходников/сборок и разбором remote-ref, построением команд инструментов сборки, эквивалентностью исходных/готовых сборок, безопасными границами удаления, URL серверов моделей, стабильными портами на модель и сопоставлением обслуживаемых моделей.
+- `LlamaProcessSupervisor`, `NativeRuntimeStopService`, `LlamaRuntimeOutputObserver`, `TrackedProcessRunner`, `WindowsEnvironmentService`, `WindowsSetupCommands`, `WslEnvironmentService`, `WslSetupCommands` и `CommandLineService` владеют супервизией процессов, проверкой остановки нативных процессов, наблюдением за stdout/stderr рантайма, выполнением отслеживаемых процессов, разбором обнаружения/статуса/проб инструментов Windows и WSL, командами настройки/проб и экранированием/запуском видимых shell-команд.
+- `RuntimeMetrics`, `RuntimeDashboardService`, `GpuStatusService`, `LogFileService`, `FileSystemSafetyService`, `VramAdmissionService` и `CacheMaintenanceService` владеют разбором метрик, вычислениями живого дашборда рантайма, сводками GPU CUDA/NVIDIA, идентификацией Intel SYCL, не зависящими от вендора резервными сводками GPU Windows, предпросмотром/классификацией/редактированием/планированием удаления логов, общими защитными ограничениями файловой системы, консервативным допуском мультимодельной VRAM и безопасностью очистки кэша.
+- `AppPreferenceService`, `DisplayFormatService`, `LaunchSettingMetadataService`, `LoadedModelSessionManager`, `ActiveRuntimeSessionStore`, `ModelRuntimeStatusTracker`, `ModelRuntimeStatusController`, `ModelRuntimeStatusRenderService`, `AppUpdateService`, `AppUpdateReleaseParser` и `AppUpdateAssetVerifier` владеют нормализацией опций настроек, общим форматированием значений UI, текстом опций/справки/подсказок настроек запуска, состоянием загруженных сеансов в памяти, состоянием восстановления работающего рантайма, таймингом переходного статуса загрузки/загруженности модели, отображением сохранённой длительности завершённой загрузки, обновлениями GitHub Releases, выбором ассетов релиза/разбором версий и проверкой контрольных сумм обновлений.
+- `HelpCatalogService` владеет компактным каталогом статей-задач, выбором секций, локализованной проекцией статей, детерминированным поиском по темам и ранжированием результатов. `HelpPageController`, `HelpPageState`, `HelpPageFactory` и `HelpResultsFactory` владеют взаимодействием поиска по справке, визуальным состоянием, композицией страницы, раскрывающимися карточками результатов и контекстной навигацией, не размещая поведение справки в `MainWindow`.
+- `EndpointInspectionService` выполняет доступную только для чтения аутентифицированную живую инспекцию прямых endpoints моделей (`/health`, `/v1/models`, `/props` и `/slots`) и общего gateway (`/health`, `/v1/models` и `/running`). Он сохраняет частичные результаты, когда ответвление (fork) не предоставляет необязательный endpoint. `EndpointInspectionDialogFactory` отображает нормализованные результаты без отправки запросов на инференс; его полная поверхность и диалоги Model Groups используют тот же контракт локализации на 21 языковой пакет, что и оболочка.
+- `OverviewPageState` применяет сохранённые предпочтения видимости UI к отдельным карточкам метрик и строкам лога/сырых метрик и оценивает состояние действий выбранной модели/профиля так, что Load подавляется только когда запущенный профиль запуска совпадает с выбранным; `ModelsPageState` делает то же для строки Hugging Face. Они сворачивают связанное пространство сетки и разделители, оставляя сервисы наблюдения за рантаймом и загрузок активными. `SettingsPageDefinitionService` проецирует девять булевых значений в компактную категорию **UI**, `AppSettingsUpdateService` валидирует значения редактора Show/Hide, а `StateStore.Settings` явно читает и пишет каждый ключ SQLite. Дебаунс-уведомление об изменении `SettingsPageState` сохраняет корректные правки и повторно применяет состояние страницы без пересборки сфокусированного редактора. Отсутствующие ключи используют документированные значения по умолчанию для каждой поверхности. Типизированная схема элементов управления `AppSettings` автоматически предоставляет те же поля.
+- `ModelGatewayService`, `ModelGatewayRequestAccessPolicy`, `ModelGatewayRequestResolver`, `ModelGatewayUpstreamProxy`, `ModelGatewayResponseWriter`, `GatewayModelLoadWorkflowService`, `GatewayRuntimeApplicationService`, `GatewayActivityStatusTracker` и `GatewayActivityStatusController` владеют общим роутером автозагрузки, проверками доступа/CORS, разрешением id модели, проксированием upstream, полезными нагрузками ответов для клиентов, рабочим процессом загрузки с учётом политики, ошибками загрузки для клиентов и статусом маршрутизации в Overview.
 
-Domain models are grouped by use instead of living in one catch-all file: core records/enums, app defaults, per-model launch settings, and runtime/download launch payloads each have dedicated model files. MainWindow background refreshes and monitors go through a shared `RunBackground` wrapper so failures are logged and surfaced in the status line instead of becoming unobserved tasks.
+Крупнейшие классы сервисов также разделены по зонам ответственности: `StateStore` разделяет каталог, политику модельных групп, настройки, сохранение заданий и миграцию устаревших значений запуска по умолчанию; `HuggingFaceService` разделяет поиск, жизненный цикл загрузок, проверку безопасности, обработку компаньонов projector и предложения профилей запуска; `LlamaProcessSupervisor` разделяет жизненный цикл рантайма, хелперы запуска и хелперы очистки WSL; `RuntimeBuildCatalogService` разделяет пресеты по умолчанию, сохранение пользовательских репозиториев, метаданные скачанных исходников, представление строк пресетов и хелперы идентичности backend/режима; `RuntimeMetadataService` разделяет чтение метаданных пакетов, вывод пресетов, хелперы коммитов и хелперы путей папок/пакетов рантайма; `ModelGatewayService` делегирует политику доступа, разрешение запросов/моделей, проксирование upstream и полезные нагрузки ответов хелперам gateway; `RuntimeDeletionPlanner` разделяет планирование прямого рантайма, пакетов, кэша исходников и пресетов сборок, тогда как `RuntimeDeletionExecutorService` выполняет мутацию состояния/файловой системы; `AppUpdateService` делегирует разбор релизов и проверку контрольных сумм хелперам обновлений; а `ModelCatalogService` держит устаревший разбор метаданных отдельно от обычных потоков сканирования/импорта/удаления.
 
-`ApplicationThemeService` owns dynamic application resource replacement and
-system-theme detection. `VisualTreeTraversal` and `UiAccessibility` provide
-shared WPF traversal and automation helpers. `MainWindow` no longer contains
-duplicated page factories, metric factories, theme palettes, or runtime control
-workflows, and every shell partial is bounded by an architecture test.
+Доменные модели сгруппированы по использованию, а не лежат в одном файле «всё включено»: базовые records/enums, значения приложения по умолчанию, настройки запуска на модель и полезные нагрузки запуска рантайма/загрузок имеют отдельные файлы моделей. Фоновые обновления и мониторы `MainWindow` проходят через общую обёртку `RunBackground`, чтобы сбои логировались и отображались в строке статуса, а не становились ненаблюдаемыми задачами.
 
-## App Update Lifecycle
+`ApplicationThemeService` владеет динамической заменой ресурсов приложения и обнаружением системной темы. `VisualTreeTraversal` и `UiAccessibility` предоставляют общие хелперы обхода дерева WPF и автоматизации. `MainWindow` больше не содержит дублирующих фабрик страниц, фабрик метрик, палитр тем или рабочих процессов управления рантаймом, и каждая partial-часть оболочки ограничена архитектурным тестом.
 
-Current:
+## Жизненный цикл обновления приложения
 
-1. The Updates navigation item sits below Logs and defaults to **Check For Updates**.
-2. Startup checks the configured GitHub release feed in the background. When a newer release is found, the nav item changes to **Install Update**.
-3. Manual checks show either a no-updates popup or an install confirmation.
-4. Install downloads the release asset into `cache\app-updates`, extracts the portable files when the asset is a zip, starts a hidden PowerShell handoff script, closes the app, stages and verifies sibling app/CLI files, atomically replaces both with rollback backups, and restarts only after the complete replacement succeeds.
-5. A matching SHA-256 companion asset is required and verified before extraction.
-6. If the installed app is signed, the staged update executable must be signed by the same certificate before replacement.
-7. The relaunched app shows the GitHub release name and notes from the installed update.
+Текущее состояние:
 
-Still needed:
+1. Пункт навигации Updates расположен ниже Logs и по умолчанию показывает **Check For Updates**.
+2. При запуске в фоне проверяется настроенная лента GitHub Releases. Когда найдена более новая версия, пункт навигации меняется на **Install Update**.
+3. Ручные проверки показывают либо всплывающее окно «обновлений нет», либо подтверждение установки.
+4. Установка скачивает ассет релиза в `cache\app-updates`, распаковывает portable-файлы, если ассет — zip, запускает скрытый сценарий передачи управления PowerShell, закрывает приложение, подготавливает и проверяет соседние файлы приложения/CLI, атомарно заменяет оба с резервными копиями для отката и перезапускается только после полного успеха замены.
+5. Перед распаковкой требуется и проверяется соответствующий SHA-256 компаньон-ассет.
+6. Если установленное приложение подписано, подготовленный исполняемый файл обновления должен быть подписан тем же сертификатом до замены.
+7. Перезапущенное приложение показывает имя и заметки релиза GitHub из установленного обновления.
 
-1. Sign release assets before uploading them to GitHub.
-2. Publish SHA-256 companion assets for update packages.
+Ещё требуется:
 
-## Model Lifecycle
+1. Подписывать ассеты релиза перед загрузкой на GitHub.
+2. Публиковать SHA-256 компаньон-ассеты для пакетов обновлений.
 
-Current:
+## Жизненный цикл модели
 
-1. Choose a models folder or scan it on demand.
-2. Auto-register missing GGUF model folders in SQLite.
-3. Pick a prebuilt or custom built llama.cpp runtime and launch settings.
-4. Load/restart/unload explicitly; more than one model can stay loaded at the same time when each model has a unique saved port and hardware capacity allows it.
-5. Search Hugging Face from the Models page, paste a Hugging Face repo or GGUF file URL directly, review compatibility signals, open the selected repo's model card, and download/install the selected GGUF plus a discoverable verified mmproj/projector companion as a background job.
-6. Delete registration or app-owned model directory according to ownership flags.
-7. Generate compact model manifests from readable GGUF metadata while preserving imported/download metadata.
-8. Verify expected byte counts or SHA-256 before registering downloaded GGUF files.
-9. Validate local vision/projector pairing by surfacing missing mmproj files in capability summaries, invalidating cached capabilities when a projector is added or removed, carrying auto-detected, embedded/model-bundled, or explicit per-model Vision head choices, carrying a separate MTP head path for compatible `--mtp-head` runtimes, and carrying per-model dynamic-resolution image token allowances through to `llama-server`.
-10. Save named launch variants per model so users can keep multiple runtime/port/context/vision profiles without duplicating model registration.
-11. Keep model serving local-only unless Settings explicitly enables LAN exposure. LAN exposure can be scoped to the auto-load gateway, direct model ports, or both. All launches require an API key; LAN exposure opens only model-serving endpoints, not the app-local control API.
-12. Show model loading progress in Overview with separate model-name and loading-time rows, and retain the completed load duration after readiness is reached so users can see how long startup took.
-13. Treat UI visibility as presentation state only. Collapsing cards, logs, raw
-    metrics, or Hugging Face controls must never disable collection, downloads,
-    or model serving. Absent keys use the documented per-surface defaults.
+Текущее состояние:
 
-Gateway routing:
+1. Выбрать папку моделей или просканировать её по запросу.
+2. Автоматически регистрировать отсутствующие папки моделей GGUF в SQLite.
+3. Выбрать готовый или собранный вручную рантайм llama.cpp и настройки запуска.
+4. Явная загрузка/перезапуск/выгрузка; одновременно могут оставаться загруженными несколько моделей, если у каждой модели уникальный сохранённый порт и позволяет ёмкость оборудования.
+5. Искать Hugging Face со страницы Models, вставлять URL репозитория Hugging Face или GGUF-файла напрямую, просматривать сигналы совместимости, открывать карточку выбранного репозитория и скачивать/устанавливать выбранный GGUF вместе с обнаруживаемым проверенным компаньоном mmproj/projector как фоновое задание.
+6. Удалять регистрацию или принадлежащую приложению директорию модели в соответствии с флагами владения.
+7. Формировать компактные манифесты моделей из читаемых метаданных GGUF, сохраняя импортированные/скачанные метаданные.
+8. Проверять ожидаемое количество байт или SHA-256 перед регистрацией скачанных GGUF-файлов.
+9. Валидировать локальное сочетание vision/projector: отображать отсутствующие файлы mmproj в сводках возможностей, инвалидировать кэшированные возможности при добавлении или удалении projector, учитывать автоматически обнаруженный, встроенный/входящий в комплект модели или явный выбор Vision head на модель, учитывать отдельный путь MTP head для совместимых рантаймов `--mtp-head` и передавать в `llama-server` допустимые количества токенов изображений с динамическим разрешением на модель.
+10. Сохранять именованные варианты запуска на модель, чтобы пользователи могли хранить несколько профилей рантайма/порта/контекста/vision без дублирования регистрации модели.
+11. Держать обслуживание моделей локальным, если Settings явно не включает доступ по LAN. Доступ по LAN может ограничиваться gateway автозагрузки, прямыми портами моделей или обоими. Все запуски требуют API-ключ; доступ по LAN открывает только endpoints обслуживания моделей, а не локальный управляющий API приложения.
+12. Показывать прогресс загрузки модели в Overview отдельными строками имени модели и времени загрузки и сохранять длительность завершённой загрузки после достижения готовности, чтобы пользователи видели, сколько занял запуск.
+13. Считать видимость UI только состоянием представления. Сворачивание карточек, логов, сырых метрик или элементов управления Hugging Face никогда не должно отключать сбор данных, загрузки или обслуживание моделей. Отсутствующие ключи используют документированные значения по умолчанию для каждой поверхности.
 
-- The auto-load gateway listens on one OpenAI-compatible `/v1` port and never serves a model process itself.
-- `GET /v1/models` exposes one route for every saved launch profile. The default profile retains the registered model id and existing model aliases; non-default profiles receive deterministic route ids derived from the model and saved profile id. Normalization collisions receive a stable hash suffix so no profile disappears from discovery.
-- Each requested profile still launches on its saved direct runtime port. The gateway resolves the requested route to a model/profile pair, ensures that exact profile is loaded, then proxies the request to that direct port. Requesting another profile for an already-running model stops that session and restarts it with the requested profile. Concurrent requests for the active profile remain concurrent until another profile queues; queued profile groups then receive FIFO priority so continuous active-profile traffic cannot starve a switch. Requests for different models remain concurrent.
-- `Prefer keeping loaded models` leaves existing sessions running and uses conservative VRAM admission before adding another GPU-backed model. `Single active model` unloads other direct sessions before loading the requested model.
-- Third-party clients discover current profile routes from `GET /v1/models`; the Manager does not discover or edit client configuration.
-- Overview reports the gateway as a router row in Loaded Model Sessions so users can see the shared endpoint, route policy, LAN exposure, and current direct-session count in the same place as loaded models.
-- Loaded-session rows expose live endpoint inspection by row double-click and endpoint-link click. Direct reports distinguish endpoint-reported defaults and active slot state; gateway reports do not invent one global context or reasoning configuration because those values belong to the routed model profile.
+Маршрутизация gateway:
 
-Still needed:
+- Gateway автозагрузки слушает один OpenAI-совместимый порт `/v1` и сам никогда не обслуживает процесс модели.
+- `GET /v1/models` предоставляет по одному маршруту для каждого сохранённого профиля запуска. Профиль по умолчанию сохраняет зарегистрированный id модели и существующие псевдонимы моделей; нестандартные профили получают детерминированные id маршрутов, выводимые из модели и сохранённого id профиля. Коллизии нормализации получают стабильный хэш-суффикс, чтобы ни один профиль не исчезал из обнаружения.
+- Каждый запрошенный профиль по-прежнему запускается на своём сохранённом прямом порту рантайма. Gateway сопоставляет запрошенный маршрут с парой модель/профиль, гарантирует, что именно этот профиль загружен, затем проксирует запрос на этот прямой порт. Запрос другого профиля для уже работающей модели останавливает этот сеанс и перезапускает его с запрошенным профилем. Параллельные запросы активного профиля остаются параллельными, пока другой профиль не встанет в очередь; поставленные в очередь группы профилей затем получают приоритет FIFO, чтобы непрерывный трафик активного профиля не мог заморить голодом переключение. Запросы разных моделей остаются параллельными.
+- `Prefer keeping loaded models` оставляет существующие сеансы работающими и использует консервативный допуск VRAM перед добавлением ещё одной модели на GPU. `Single active model` выгружает другие прямые сеансы перед загрузкой запрошенной модели.
+- Сторонние клиенты узнают текущие маршруты профилей из `GET /v1/models`; Manager не обнаруживает и не редактирует конфигурацию клиентов.
+- Overview показывает gateway как строку роутера в Loaded Model Sessions, чтобы пользователи видели общий endpoint, политику маршрутов, доступ по LAN и текущее количество прямых сеансов в том же месте, что и загруженные модели.
+- Строки загруженных сеансов открывают живую инспекцию endpoint двойным кликом по строке и кликом по ссылке endpoint. Прямые отчёты различают значения по умолчанию, сообщаемые endpoint, и состояние активных слотов; отчёты gateway не выдумывают единый глобальный контекст или конфигурацию рассуждений, потому что эти значения принадлежат маршрутизируемому профилю модели.
 
-1. Add richer rollback controls for installed runtime builds.
+Ещё требуется:
 
-## llama.cpp Runtime Lifecycle
+1. Добавить более богатые средства отката для установленных сборок рантайма.
 
-Current:
+## Жизненный цикл рантайма llama.cpp
 
-1. Install prebuilt llama.cpp runtime packages from Runtime Downloads first. Current presets cover official CUDA Windows, CUDA WSL, Vulkan Windows, Vulkan WSL, Intel Arc SYCL Windows, Intel Arc SYCL WSL, CPU Windows, CPU WSL, plus Atomic TurboQuant CUDA Windows and Atomic TurboQuant CUDA WSL entries when their package sources publish matching assets.
-2. Scan configured runtime roots and register folders containing `llama-server` or `llama-server.exe`.
-3. Select a runtime per model and save a stable per-model port next to that runtime in model launch settings.
-4. Unregister unused runtimes; runtime file deletion is disabled when a runtime is active or referenced by saved model launch settings.
-5. Reconcile official source-built and prebuilt runtimes by runtime fingerprint when their binaries match.
-6. Build CPU, CUDA, Vulkan, or SYCL llama.cpp for native Windows or Ubuntu/WSL through the Runtime Downloads row state machine: Check source, Download, then Build. Source-only and custom repositories share the same table, while jobs remain visible for progress and recovery.
-7. Delete downloaded source/build folders only when bounded inside the configured runtimes folder. Builds started from the Runtime Downloads table force cleanup of the downloaded source after success so the row resets to Check; lower-level control operations retain the explicit cleanup setting.
-8. Filter downloadable and installed runtime inventories by vendor (AMD/Vulkan, Intel/SYCL, NVIDIA/CUDA) and platform (Windows or Linux/WSL), while CPU entries remain in the unfiltered inventory.
-9. Cancel active runtime build jobs, retry failed/cancelled/interrupted runtime build jobs, clear finished runtime build job records/logs, and show latest build-log progress in the job summary.
-10. Detect installed WSL distros from the WSL Linux page, ignoring Docker-managed WSL distros.
-11. Select the Ubuntu distro used for WSL launches/builds.
-12. Open visible setup commands for Windows CPU/CUDA/Vulkan/Intel oneAPI tools, WSL install, WSL update, Ubuntu install, Ubuntu CPU build-tool install, Ubuntu CUDA Toolkit install, Ubuntu Vulkan tool install, Ubuntu Intel GPU runtime install, Ubuntu Intel oneAPI install, and Ubuntu package update checks.
-13. Install CPU build dependencies inside Ubuntu (`git`, `cmake`, compiler tools, pkg-config, libcurl headers, ccache, Ninja) on request.
-14. Treat CUDA as a separate WSL setup action, installing NVIDIA's WSL CUDA Toolkit on request and checking for CUDA Toolkit before starting a CUDA CMake build.
-15. Treat Vulkan as a separate setup action, installing the Ubuntu Vulkan packages needed by official llama.cpp builds (`libvulkan-dev`, `glslc`, `spirv-headers`, `vulkan-tools`, `mesa-vulkan-drivers`) and checking `vulkaninfo --summary` before starting a Vulkan CMake build.
-16. Treat Intel Arc SYCL as a separate setup action, checking Windows oneAPI tools for native launches/builds and Ubuntu Level Zero/OpenCL runtime plus oneAPI DPC++/MKL/DNNL tools for WSL launches/builds.
-17. Detect Windows CPU/CUDA/Vulkan/SYCL build tool presence from the Windows page and WSL CPU/CUDA/Vulkan/SYCL build tool presence from the WSL Linux page.
-18. Keep Windows and WSL runtime presets distinct so package downloads, source downloads, update checks, build jobs, retries, and delete-all actions do not mix native and WSL artifacts.
+Текущее состояние:
 
-Still needed:
+1. Сначала устанавливайте готовые пакеты рантайма llama.cpp из Runtime Downloads. Текущие пресеты покрывают официальные CUDA Windows, CUDA WSL, Vulkan Windows, Vulkan WSL, Intel Arc SYCL Windows, Intel Arc SYCL WSL, CPU Windows, CPU WSL, а также позиции Atomic TurboQuant CUDA Windows и Atomic TurboQuant CUDA WSL, когда их источники пакетов публикуют подходящие ассеты.
+2. Сканировать настроенные корни рантайма и регистрировать папки, содержащие `llama-server` или `llama-server.exe`.
+3. Выбирать рантайм для каждой модели и сохранять стабильный порт модели рядом с этим рантаймом в настройках запуска модели.
+4. Отменять регистрацию неиспользуемых рантаймов; удаление файлов рантайма отключено, когда рантайм активен или на него ссылаются сохранённые настройки запуска модели.
+5. Согласовывать официальные рантаймы из исходников и готовые по отпечатку рантайма, когда их бинарники совпадают.
+6. Собирать llama.cpp для CPU, CUDA, Vulkan или SYCL для нативного Windows или Ubuntu/WSL через конечный автомат строки Runtime Downloads: Check source, Download, затем Build. Репозитории только с исходниками и пользовательские используют одну таблицу, а задания остаются видимыми для отслеживания прогресса и восстановления.
+7. Удалять скачанные папки исходников/сборок только при нахождении в границах настроенной папки рантаймов. Сборки, запущенные из таблицы Runtime Downloads, принудительно очищают скачанные исходники после успеха, чтобы строка сбрасывалась в Check; низкоуровневые управляющие операции сохраняют явную настройку очистки.
+8. Фильтровать инвентари доступных для скачивания и установленных рантаймов по вендору (AMD/Vulkan, Intel/SYCL, NVIDIA/CUDA) и платформе (Windows или Linux/WSL), при этом позиции CPU остаются в нефильтрованном инвентаре.
+9. Отменять активные задания сборки рантайма, повторять неудачные/отменённые/прерванные задания сборки, очищать записи/логи завершённых заданий сборки и показывать последний прогресс из лога сборки в сводке задания.
+10. Обнаруживать установленные дистрибутивы WSL на странице WSL Linux, игнорируя дистрибутивы WSL под управлением Docker.
+11. Выбирать дистрибутив Ubuntu, используемый для запусков/сборок в WSL.
+12. Открывать видимые команды настройки для инструментов Windows CPU/CUDA/Vulkan/Intel oneAPI, установки WSL, обновления WSL, установки Ubuntu, установки инструментов сборки CPU в Ubuntu, установки Ubuntu CUDA Toolkit, установки инструментов Vulkan в Ubuntu, установки рантайма Intel GPU в Ubuntu, установки Intel oneAPI в Ubuntu и проверок обновлений пакетов Ubuntu.
+13. Устанавливать зависимости сборки CPU внутри Ubuntu (`git`, `cmake`, инструменты компилятора, pkg-config, заголовки libcurl, ccache, Ninja) по запросу.
+14. Считать CUDA отдельным действием настройки WSL: устанавливать WSL CUDA Toolkit от NVIDIA по запросу и проверять наличие CUDA Toolkit перед началом CUDA CMake-сборки.
+15. Считать Vulkan отдельным действием настройки: устанавливать пакеты Vulkan Ubuntu, необходимые официальным сборкам llama.cpp (`libvulkan-dev`, `glslc`, `spirv-headers`, `vulkan-tools`, `mesa-vulkan-drivers`), и проверять `vulkaninfo --summary` перед началом Vulkan CMake-сборки.
+16. Считать Intel Arc SYCL отдельным действием настройки: проверять инструменты oneAPI Windows для нативных запусков/сборок и рантайм Ubuntu Level Zero/OpenCL плюс инструменты oneAPI DPC++/MKL/DNNL для запусков/сборок в WSL.
+17. Обнаруживать наличие инструментов сборки Windows CPU/CUDA/Vulkan/SYCL на странице Windows и инструментов сборки WSL CPU/CUDA/Vulkan/SYCL на странице WSL Linux.
+18. Держать пресеты рантайма Windows и WSL раздельными, чтобы скачивания пакетов, скачивания исходников, проверки обновлений, задания сборок, повторы и действия удаления всего не смешивали нативные и WSL-артефакты.
 
-1. Broaden runtime compatibility badges beyond the current build-prerequisite checks.
-2. Add richer rollback controls for installed runtime packages/builds.
+Ещё требуется:
 
-## Architecture Guardrails
+1. Расширить значки совместимости рантаймов за пределы текущих проверок предварительных условий сборки.
+2. Добавить более богатые средства отката для установленных пакетов/сборок рантайма.
 
-The codebase should continue moving by feature module, not back toward large
-files.
+## Архитектурные ограничения (guardrails)
 
-- Keep `MainWindow` focused on app lifetime, shell navigation, event brokerage,
-  and top-level status.
-- Keep raw WPF controls grouped behind page state objects.
-- Keep page-specific row/event routing in page controllers or presenters when a
-  page gains non-trivial action wiring.
-- Keep `MainWindowCoreServices` and `MainWindowLoadedServices` as feature-bundle
-  records without flat pass-through aliases.
-- Keep representative feature services in their owning service module instead
-  of relying on filename search to hide accidental moves.
-- Keep service and UI implementation filenames unique across modules so tests,
-  reviews, and future moves cannot become ambiguous by filename alone.
-- Merge pass-through `ApplicationService`/`WorkflowService` pairs when a wrapper
-  does not own a real UI adaptation, decision, state, or boundary.
-- Prefer behavior tests and module-boundary guard tests over brittle tests that
-  assert exact source text in specific files.
+Кодовая база должна продолжать развиваться по модулям функциональности, а не возвращаться к большим файлам.
+
+- Держать `MainWindow` сфокусированным на времени жизни приложения, навигации оболочки, брокеридже событий и статусе верхнего уровня.
+- Держать сырые элементы управления WPF сгруппированными за объектами состояния страниц.
+- Держать маршрутизацию строк/событий страниц в контроллерах или презентерах страниц, когда страница получает нетривиальную связку действий.
+- Держать `MainWindowCoreServices` и `MainWindowLoadedServices` как записи наборов функциональности без плоских транзитных псевдонимов.
+- Держать типичные сервисы функциональности в их владеющем модуле сервисов, вместо того чтобы полагаться на поиск по имени файла для скрытия случайных перемещений.
+- Держать имена файлов реализации сервисов и UI уникальными во всех модулях, чтобы тесты, ревью и будущие перемещения не могли стать неоднозначными только по имени файла.
+- Объединять транзитные пары `ApplicationService`/`WorkflowService`, когда обёртка не владеет реальной UI-адаптацией, решением, состоянием или границей.
+- Предпочитать поведенческие тесты и тесты-ограничители границ модулей хрупким тестам, которые проверяют точный текст исходников в конкретных файлах.

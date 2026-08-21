@@ -1,14 +1,17 @@
-# Automation quick start
+# Быстрый старт автоматизации
 
-Read [AGENTS.md](AGENTS.md) before operating llama.cpp Windows Manager. It is
-the authoritative guide for discovery, model identity, lifecycle safety,
-restarts, downloads, settings, installation, and source work.
+Перед работой с llama.cpp Windows Manager прочитайте [AGENTS.md](AGENTS.md).
+Это авторитетное руководство по обнаружению, идентификации моделей,
+безопасности жизненного цикла, перезапускам, загрузкам, настройкам,
+установке и работе с исходным кодом.
 
-The canonical source repository is
-<https://github.com/MRafStudio/llama-cpp-windows-manager>; use GitHub Releases for
-installation and clone the repository only for development or review.
+Канонический исходный репозиторий:
+<https://github.com/MRafStudio/llama-cpp-windows-manager>; для установки
+используйте GitHub Releases, а клонируйте репозиторий только для разработки
+или ревью.
 
-Use the `llwmctl.exe` beside the installed or portable application:
+Используйте `llwmctl.exe`, расположенный рядом с установленным
+или portable-приложением:
 
 ```powershell
 ./llwmctl.exe status
@@ -17,11 +20,12 @@ Use the `llwmctl.exe` beside the installed or portable application:
 ./llwmctl.exe self
 ```
 
-`llwmctl` controls the running Manager through its authenticated loopback API.
-Do not edit the Manager database, launch `llama-server` directly, expose the
-control API, or automate the WPF interface.
+`llwmctl` управляет запущенным Manager'ом через его аутентифицированный
+loopback API. Не редактируйте базу данных Manager'а, не запускайте
+`llama-server` напрямую, не открывайте доступ к API управления
+и не автоматизируйте WPF-интерфейс.
 
-Resolve identifiers before acting:
+Сначала разрешите идентификаторы:
 
 ```powershell
 llwmctl models list
@@ -30,7 +34,7 @@ llwmctl profiles list --model <model>
 llwmctl sessions list
 ```
 
-Prefer saved profiles and wait for readiness:
+Предпочитайте сохранённые профили и дожидайтесь готовности:
 
 ```powershell
 llwmctl load <model> --profile <profile> --wait
@@ -40,22 +44,24 @@ llwmctl sessions metrics <session>
 llwmctl sessions logs <session>
 ```
 
-Run `self` before any action that can stop or replace a loaded model. Never use
-`--allow-self-stop` or `--confirm` without explicit authorization for the stated
-consequence. Validate unfamiliar or consequential operations with the live
-schema and `operations run <name> --dry-run`.
+Запускайте `self` перед любым действием, которое может остановить или
+заменить загруженную модель. Никогда не используйте `--allow-self-stop`
+или `--confirm` без явного разрешения на заявленное последствие. Проверяйте
+незнакомые или ответственные операции по живой схеме и через
+`operations run <name> --dry-run`.
 
-If discovery is ambiguous, use `--workspace <path>` or
-`--connection <workspace>\state\control.json`. If the Manager is not running and
-the user asked to operate it, start `LlamaCppWindowsManager.exe` normally, then
-retry `status`; never start a second instance.
+Если обнаружение неоднозначно, используйте `--workspace <path>` или
+`--connection <workspace>\state\control.json`. Если Manager не запущен,
+а пользователь попросил им управлять, запустите `LlamaCppWindowsManager.exe`
+обычным образом и повторите `status`; никогда не запускайте второй экземпляр.
 
-Release builds restore the matching CLI and operator documentation beside the
-application executable. Verify this without starting the UI with:
+Релизные сборки восстанавливают соответствующие CLI- и операторские
+документации рядом с исполняемым файлом приложения. Проверьте это без запуска
+UI командой:
 
 ```powershell
 LlamaCppWindowsManager.exe --bootstrap-agent-sidecars-only
 ```
 
-See [Local control API and `llwmctl`](docs/CONTROL_API.md) for the full command
-and HTTP contracts.
+Полные контракты команд и HTTP см. в
+[Локальный API управления и `llwmctl`](docs/CONTROL_API.md).

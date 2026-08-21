@@ -1,17 +1,17 @@
-# Development Guide
+# Руководство разработчика
 
-Last reviewed: 2026-08-15
+Последняя проверка: 2026-08-15
 
-This repo is a Windows-first .NET 10 WPF app. The app should stay easy to run
-from source, but end users should receive the published portable app or
-installer from `dist`.
+Этот репозиторий — Windows-first WPF-приложение на .NET 10. Приложение должно
+оставаться простым в запуске из исходников, но конечные пользователи должны
+получать опубликованное portable-приложение или установщик из `dist`.
 
-## Repository Onboarding
+## Онбординг в репозиторий
 
-The canonical repository is <https://github.com/MRafStudio/llama-cpp-windows-manager>.
-End users should install a checksum-verified artifact from GitHub Releases;
-cloning the repository is the development path and does not install the app,
-models, or llama.cpp runtimes.
+Канонический репозиторий: <https://github.com/MRafStudio/llama-cpp-windows-manager>.
+Конечные пользователи должны устанавливать проверенный по контрольной сумме
+артефакт из GitHub Releases; клонирование репозитория — путь разработчика
+и не устанавливает приложение, модели или рантаймы llama.cpp.
 
 ```powershell
 git clone https://github.com/MRafStudio/llama-cpp-windows-manager.git
@@ -20,40 +20,46 @@ Get-Content AGENTS.md
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./scripts/build-app.ps1 -Restore
 ```
 
-Before launching a source build, check whether the single-instance production
-Manager is already running. Builds and tests are safe to run alongside it, but
-a second UI process cannot run in the same Windows user session. Use the ignored
-`workspace` folder for development state rather than a production workspace.
+Перед запуском сборки из исходников проверьте, не запущен ли уже
+одноэкземплярный продакшн-Manager. Сборки и тесты можно безопасно запускать
+параллельно с ним, но второй UI-процесс не может работать в той же
+пользовательской сессии Windows. Для состояния разработки используйте
+игнорируемую папку `workspace`, а не продакшн-рабочее пространство.
 
-For GitHub contributions, preserve existing worktree changes, use a feature
-branch, keep generated output and local state out of commits, and run the local
-gate below. Committing, pushing, opening a pull request, or publishing a release
-are separate actions that require the user's authorization. Public trusted
-releases must use the protected signed-release workflow; never label an
-unsigned local artifact as signed or trusted.
+Для вклада через GitHub сохраняйте существующие изменения рабочего дерева,
+используйте feature-ветку, не включайте сгенерированные результаты и локальное
+состояние в коммиты и прогоняйте локальный gate, описанный ниже. Коммит, push,
+открытие pull request'а или публикация релиза — отдельные действия, требующие
+авторизации пользователя. Публичные доверенные релизы должны использовать
+защищённый workflow подписанных релизов; никогда не помечайте неподписанный
+локальный артефакт как подписанный или доверенный.
 
-Before committing, inspect `git status --short` and make sure every intended
-source, test, manifest, license, and documentation file is tracked. Local builds
-compile SDK-globbed untracked `.cs` files, but CI and reviewers cannot see them;
-a green local test run is therefore not sufficient while required files still
-appear with `??`. Generated `dist`, `bin`, `obj`, workspaces, databases, logs,
-models, runtimes, credentials, and signing material must remain untracked.
+Перед коммитом проверьте `git status --short` и убедитесь, что каждый
+предназначенный исходный файл, тест, манифест, лицензия и документация
+отслеживаются. Локальные сборки компилируют неотслеживаемые `.cs`-файлы,
+подхваченные SDK-glob'ом, но CI и ревьюеры их не видят; поэтому зелёный
+локальный прогон тестов недостаточен, пока необходимые файлы всё ещё
+появляются с `??`. Сгенерированные `dist`, `bin`, `obj`, рабочие
+пространства, базы данных, логи, модели, рантаймы, учётные данные
+и материалы подписания должны оставаться неотслеживаемыми.
 
-Treat code from external branches and pull requests as untrusted until it has
-been reviewed. Do not execute an untrusted contribution on a machine containing
-production Manager data, signing certificates, or release credentials. If a
-contributor cannot push to the canonical repository, use their fork and a pull
-request only after that GitHub mutation has been requested.
+Считайте код из внешних веток и pull request'ов ненадёжным, пока он не
+проверен. Не выполняйте ненадёжный вклад на машине, содержащей
+продакшн-данные Manager'а, сертификаты подписания или релизные учётные
+данные. Если участник не может пушить в канонический репозиторий,
+используйте его fork и pull request только после того, как эта
+GitHub-мутация была запрошена.
 
-## Local Gate
+## Локальный gate
 
-Run these before opening a release PR or after any architecture-level change:
+Запускайте их перед открытием релизного PR или после любого изменения
+архитектурного уровня:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\test-release-gate.ps1
 ```
 
-That wrapper runs the same gate as the individual commands below:
+Эта обёртка запускает тот же gate, что и отдельные команды ниже:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-app.ps1 -Restore
@@ -63,169 +69,189 @@ git diff --check
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\test-vulnerabilities.ps1
 ```
 
-The coverage gate collects instrumented Debug binaries (public Release binaries intentionally omit PDBs), rejects skipped tests, and requires at least 80% service line
-coverage and 95% model/view-model line coverage. WPF composition is additionally
-exercised on an STA thread because global coverage is distorted by generated
-markup and code-behind. Tests use the .NET 10 Microsoft Testing Platform runner
-selected in `global.json`; project-specific commands therefore use `dotnet test
---project <path>`, while a solution-wide run uses `dotnet test --solution
-LocalLlmConsole.sln`.
+Gate покрытия собирает инструментированные Debug-бинарники (публичные
+Release-бинарники намеренно без PDB), отклоняет пропущенные тесты и требует
+не менее 80% покрытия строк сервисного слоя и 95% покрытия строк
+моделей/view-моделей. WPF-композиция дополнительно проверяется на STA-потоке,
+поскольку глобальное покрытие искажается сгенерированной разметкой
+и code-behind. Тесты используют раннер Microsoft Testing Platform (.NET 10),
+выбранный в `global.json`; поэтому команды для конкретного проекта
+используют `dotnet test --project <path>`, а прогон по всему решению —
+`dotnet test --solution LocalLlmConsole.sln`.
 
-To include packaging on a machine with publish/installer prerequisites, run:
+Чтобы включить упаковку на машине с установленными требованиями
+publish/installer, запустите:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\test-release-gate.ps1 -IncludePublish -IncludeInstaller
 ```
 
-Use `-RequireCleanTree` on `scripts/test-release-gate.ps1`,
-`scripts/publish-app.ps1`, or `scripts/build-installer.ps1` when producing release artifacts that must come from a
-clean Git worktree.
+Используйте `-RequireCleanTree` в `scripts/test-release-gate.ps1`,
+`scripts/publish-app.ps1` или `scripts/build-installer.ps1` при создании
+релизных артефактов, которые должны происходить из чистого Git-рабочего
+дерева.
 
-If `dotnet` is not on `PATH`, set `LLAMA_CPP_WINDOWS_MANAGER_DOTNET` to a .NET
-10 SDK `dotnet.exe`.
+Если `dotnet` отсутствует в `PATH`, задайте `LLAMA_CPP_WINDOWS_MANAGER_DOTNET`,
+указав `dotnet.exe` из .NET 10 SDK.
 
-## Module Layout
+## Структура модулей
 
-The durable rules live in `docs/ARCHITECTURE.md` under "Architecture
-Contract". Treat that section as the source of truth when deciding whether a
-change belongs in `MainWindow`, a page controller, an application service, a
-workflow service, a domain service, or infrastructure.
+Долговременные правила находятся в `docs/ARCHITECTURE.md` в разделе
+«Architecture Contract». Считайте этот раздел источником истины, решая,
+относится ли изменение к `MainWindow`, контроллеру страницы, сервису
+приложения, сервису workflow, доменному сервису или инфраструктуре.
 
-Top-level `Services` files are reserved for composition/root wiring:
+Файлы верхнего уровня `Services` зарезервированы для композиции и корневой
+обвязки:
 
 - `AppServiceFactory*.cs`
 - `MainWindowServices.cs`
-  - Defines infrastructure, core, and loaded service bundles by feature.
-  - Keep new dependencies in the narrowest matching bundle rather than adding
-    another top-level constructor parameter.
+  - Определяет пакеты инфраструктурных, базовых и загруженных сервисов
+    по фичам.
+  - Держите новые зависимости в наиболее узком подходящем пакете, а не
+    добавляйте ещё один параметр конструктора верхнего уровня.
 
-Implementation services live under feature modules:
+Сервисы реализации живут в feature-модулях:
 
-| Folder | Ownership |
+| Папка | Владение |
 | --- | --- |
-| `Services/App` | App settings, startup/shutdown, updates, logs, help, cache, and shared app workflows. |
-| `Services/Environment` | Windows and WSL detection, setup command planning, and visible tool setup launchers. |
-| `Services/Gateway` | Local model gateway host/runtime contracts and gateway activity state. |
-| `Services/HuggingFace` | Hugging Face search, metadata, download safety, download history, and launch suggestions. |
-| `Services/Infrastructure` | State store, local app service, process runner, filesystem/config safety, dialogs, jobs, formatting, and shell helpers. |
-| `Services/Models` | Model catalog, model capabilities, aliases, model launch profiles, and model deletion/import behavior. |
-| `Services/Runtimes` | Runtime registry, packages, source/build jobs, launch validation, sessions, metrics, readiness, and process supervision. |
+| `Services/App` | Настройки приложения, запуск/остановка, обновления, логи, справка, кэш и общие workflow приложения. |
+| `Services/Environment` | Обнаружение Windows и WSL, планирование setup-команд и видимые лаунчеры настройки инструментов. |
+| `Services/Gateway` | Контракты host/runtime локального gateway моделей и состояние активности gateway. |
+| `Services/HuggingFace` | Поиск Hugging Face, метаданные, безопасность загрузок, история загрузок и предложения по запуску. |
+| `Services/Infrastructure` | Хранилище состояния, локальный сервис приложения, запуск процессов, безопасность файловой системы и конфигурации, диалоги, задачи, форматирование и shell-хелперы. |
+| `Services/Models` | Каталог моделей, возможности моделей, алиасы, профили запуска моделей и поведение удаления/импорта моделей. |
+| `Services/Runtimes` | Реестр рантаймов, пакеты, задания source/build, валидация запуска, сессии, метрики, готовность и супервизия процессов. |
 
-UI factories and page state live under:
+UI-фабрики и состояние страниц находятся в:
 
 - `Ui/Common`
 - `Ui/Pages/<Feature>`
 
-The current code keeps file-scoped namespaces stable. Namespace tightening can
-happen module-by-module after behavior is settled.
+Текущий код сохраняет file-scoped namespace'ы стабильными. Ужесточение
+namespace'ов может происходить модуль за модулем после того, как поведение
+устоялось.
 
-## Service Naming
+## Именование сервисов
 
-Use these names consistently:
+Используйте эти имена последовательно:
 
-- `WorkflowService`: owns a domain sequence or business workflow.
-- `ApplicationService`: adapts a workflow to UI-facing actions and status.
-- `Controller`: owns stateful UI coordination, timers, reentrancy, or lifecycle state.
-- `Factory`: constructs controls or services.
-- `State`: stores control references or page/session state without business rules.
+- `WorkflowService`: владеет доменной последовательностью или бизнес-workflow.
+- `ApplicationService`: адаптирует workflow к действиям и статусу,
+  видимым в UI.
+- `Controller`: владеет stateful-координацией UI, таймерами, повторным
+  входом или состоянием жизненного цикла.
+- `Factory`: создаёт контролы или сервисы.
+- `State`: хранит ссылки на контролы или состояние страницы/сессии без
+  бизнес-правил.
 
-Avoid adding a new service for a single pass-through method. Prefer extending an
-existing feature service unless the new type owns a real decision, state, or
-boundary.
+Избегайте добавления нового сервиса для одного pass-through метода.
+Предпочитайте расширять существующий сервис фичи, если только новый тип
+не владеет реальным решением, состоянием или границей.
 
-## MainWindow Direction
+## Направление MainWindow
 
-`MainWindow` is the shell, navigation host, app lifetime coordinator, and event
-broker. Keep feature behavior in services, workflow/application services, page
-state, view models, or page controllers.
+`MainWindow` — это оболочка, хост навигации, координатор жизненного цикла
+приложения и брокер событий. Держите поведение фич в сервисах,
+workflow/application-сервисах, состоянии страниц, view-моделях
+или контроллерах страниц.
 
-Use these rules when touching `MainWindow`:
+Соблюдайте эти правила при работе с `MainWindow`:
 
-- Persistent fields should be shell state, service bundles, loaded-service
-  lifecycle holders, page state, or page-controller bundles.
-- Raw WPF control references should stay grouped behind page state objects.
-- Core services should be reached through named bundles such as
+- Постоянные поля должны быть состоянием оболочки, пакетами сервисов,
+  держателями жизненного цикла загруженных сервисов, состоянием страниц
+  или пакетами контроллеров страниц.
+- Сырые ссылки на WPF-контролы должны группироваться за объектами состояния
+  страниц.
+- Базовые сервисы должны быть доступны через именованные пакеты, такие как
   `_coreServices.App`, `_coreServices.Ui`, `_coreServices.Models`,
-  `_coreServices.Runtime`,
-  `_coreServices.HuggingFaceServices`, and `_coreServices.Environment`.
-- Loaded services should be reached through `AppServices`, `ModelServices`,
-  `GatewayServices`, and `RuntimeServices`. Do not add flat pass-through aliases
-  to `MainWindowLoadedServices`.
-- Page-specific row/event routing belongs in page controllers. Models, Hugging
-  Face download history, Runtimes, Windows, WSL, Overview, Logs,
-  Lifetime, and Settings pages already follow this pattern.
-- Runtime control-API dispatch and workflow composition belong in
-  `ControlRuntimeOperationApplicationService`; theme resource mutation belongs
-  in `ApplicationThemeService`; shared visual-tree and accessibility helpers
-  belong under `Ui/Common`.
-- Keep each `MainWindow*.cs` shell adapter at or below 300 nonblank lines. The
-  architecture test enforces this limit and rejects reintroduced UI factories,
-  theme policy, or runtime control workflows in the window.
-- Keep `ModelGroupDialogFactory` split by dialog responsibility; each partial is
-  limited to 300 nonblank lines by the architecture test.
-- Empty placeholder partials should be deleted.
+  `_coreServices.Runtime`, `_coreServices.HuggingFaceServices`
+  и `_coreServices.Environment`.
+- Загруженные сервисы должны быть доступны через `AppServices`,
+  `ModelServices`, `GatewayServices` и `RuntimeServices`. Не добавляйте
+  плоские pass-through алиасы к `MainWindowLoadedServices`.
+- Маршрутизация строк/событий конкретных страниц принадлежит контроллерам
+  страниц. Страницы Models, история загрузок Hugging Face, Runtimes, Windows,
+  WSL, Overview, Logs, Lifetime и Settings уже следуют этому шаблону.
+- Диспетчеризация runtime control-API и композиция workflow принадлежат
+  `ControlRuntimeOperationApplicationService`; мутация ресурсов темы —
+  `ApplicationThemeService`; общие хелперы визуального дерева
+  и доступности — `Ui/Common`.
+- Держите каждый shell-адаптер `MainWindow*.cs` на уровне 300 непустых строк
+  или ниже. Архитектурный тест обеспечивает соблюдение этого ограничения
+  и отклоняет повторное внедрение UI-фабрик, политики тем
+  или runtime control-workflow в окно.
+- Держите `ModelGroupDialogFactory` разделённым по ответственности диалогов;
+  каждая partial-часть ограничена 300 непустыми строками архитектурным
+  тестом.
+- Пустые partial-заглушки следует удалять.
 
-## Test Guidance
+## Рекомендации по тестированию
 
-Prefer behavior tests over source-shape tests. Source-shape tests are acceptable
-for architectural guardrails, but they should check durable boundaries, not
-fragile line-by-line implementation details.
+Предпочитайте поведенческие тесты тестам формы исходников. Тесты формы
+исходников допустимы для архитектурных ограждений, но они должны проверять
+долговременные границы, а не хрупкие детали реализации построчно.
 
-Useful test groups:
+Полезные группы тестов:
 
-- `ReleaseHardening.Architecture.Tests.cs`: module layout guardrails.
-- `ReleaseHardening.Runtime.Tests.cs`: runtime/session/metrics/build behavior.
-- `ReleaseHardening.HuggingFace.Tests.cs`: search/download/safety behavior.
-- `ReleaseHardening.Ui.Tests.cs`: view model and UI composition invariants.
+- `ReleaseHardening.Architecture.Tests.cs`: ограждения структуры модулей.
+- `ReleaseHardening.Runtime.Tests.cs`: поведение runtime/сессий/метрик/сборки.
+- `ReleaseHardening.HuggingFace.Tests.cs`: поведение поиска/загрузки/безопасности.
+- `ReleaseHardening.Ui.Tests.cs`: инварианты view-моделей и UI-композиции.
 
-### Adding an app-level UI preference
+### Добавление UI-настройки уровня приложения
 
-Overview visibility is app state, not a model launch option. A new persistent
-UI preference requires all of the following:
+Видимость Overview — состояние приложения, а не опция запуска модели. Новая
+постоянная UI-настройка требует всего следующего:
 
-1. Add a backward-compatible defaulted property to `AppSettings`.
-2. Add its Settings row in `SettingsPageDefinitionService` and parse it in
-   `AppSettingsUpdateService`.
-3. Add both read and write mappings in `StateStore.Settings`; the record property
-   alone does not persist an individual SQLite settings key.
-4. Apply it through the relevant page state so automatic Settings persistence
-   updates the already-running page without requiring a restart.
-5. Keep hidden telemetry presentation-only unless the product requirement
-   explicitly changes collection behavior.
-6. Add update-service, SQLite save/reload, WPF visibility/reflow, localization,
-   control-schema, Help, and release-readiness coverage.
+1. Добавьте обратно-совместимое свойство со значением по умолчанию
+   в `AppSettings`.
+2. Добавьте её строку настроек в `SettingsPageDefinitionService` и разбор
+   в `AppSettingsUpdateService`.
+3. Добавьте маппинги чтения и записи в `StateStore.Settings`; одного свойства
+   записи недостаточно для сохранения отдельного ключа настроек SQLite.
+4. Примените её через соответствующее состояние страницы, чтобы
+   автоматическое сохранение настроек обновляло уже запущенную страницу
+   без перезапуска.
+5. Держите скрытую телеметрию только презентационной, если только
+   продуктовое требование явно не меняет поведение сбора.
+6. Добавьте покрытие update-сервиса, SQLite save/reload, видимости/reflow
+   WPF, локализации, схемы контролов, справки и готовности релиза.
 
-The six Overview status-card switches and live runtime log are default-`true`.
-The dense raw metrics table and Models Hugging Face section are default-`false`.
-Choose defaults deliberately when adding future optional surfaces.
+Шесть переключателей статус-карточек Overview и живой лог runtime по умолчанию
+включены (`true`). Плотная таблица сырых метрик и секция Models Hugging Face
+по умолчанию выключены (`false`). Выбирайте значения по умолчанию обдуманно
+при добавлении будущих опциональных поверхностей.
 
-## Documentation Guidance
+## Рекомендации по документации
 
-When behavior changes, update both the repo docs and in-app Help in the same
-pass:
+При изменении поведения обновляйте в одном проходе и документацию
+репозитория, и встроенную справку приложения:
 
-- `README.md` for the public feature overview, quick start, safety defaults,
-  and distribution behavior.
-- `docs/ARCHITECTURE.md` for module ownership, serving topology, and durable
-  architectural guardrails.
-- `docs/RELEASE_READINESS.md` for manual validation steps and latest verified
-  command results.
-- `docs/GITHUB_RELEASE_NEXT.md` for unreleased user-visible changes.
-- `AGENTS.md`, `agent.md`, and `docs/CONTROL_API.md` when an automation-facing
-  field or operation changes; these are embedded release sidecars.
-- `Services/App/HelpCatalogService.cs` for concise Help topics and search terms,
-  plus `Ui/Pages/Help/*` for Help search, presentation, and navigation behavior.
+- `README.md` — публичный обзор фич, быстрый старт, настройки безопасности
+  по умолчанию и поведение распространения.
+- `docs/ARCHITECTURE.md` — владение модулями, топология раздачи
+  и долговременные архитектурные ограждения.
+- `docs/RELEASE_READINESS.md` — шаги ручной валидации и последние проверенные
+  результаты команд.
+- `docs/GITHUB_RELEASE_NEXT.md` — невыпущенные видимые пользователю изменения.
+- `AGENTS.md`, `agent.md` и `docs/CONTROL_API.md` — при изменении поля или
+  операции, обращённых к автоматизации; эти файлы встраиваются в релиз
+  как sidecar'ы.
+- `Services/App/HelpCatalogService.cs` — краткие темы справки и поисковые
+  термины, плюс `Ui/Pages/Help/*` — поведение поиска по справке,
+  презентации и навигации.
 
-Prefer describing current behavior over refactor history. Historical release
-notes should stay historically accurate and point to the next-release notes for
-newer behavior.
+Предпочитайте описание текущего поведения истории рефакторингов. Исторические
+заметки релизов должны оставаться исторически точными и указывать на заметки
+следующего релиза для более нового поведения.
 
-## Generated Output
+## Сгенерированные результаты
 
-Generated output is ignored and should stay out of commits:
+Сгенерированные результаты игнорируются и не должны попадать в коммиты:
 
 - `bin`
 - `obj`
 - `dist`
 - `TestResults`
-- local `data`, `models`, `runtimes`, `cache`, `state`, and `logs`
+- локальные `data`, `models`, `runtimes`, `cache`, `state` и `logs`

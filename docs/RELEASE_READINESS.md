@@ -1,10 +1,14 @@
-# Release Readiness Checklist
+# Контрольный список готовности к релизу
 
-Last updated: 2026-08-15
+Последнее обновление: 2026-08-15
 
-## Automated Gate
+## Автоматизированная проверка
 
-Run from a clean checkout with the .NET 10 SDK selected by `global.json` on `PATH`, or set `LLAMA_CPP_WINDOWS_MANAGER_DOTNET` to an explicit SDK `dotnet.exe`. The legacy `LLAMA_CPP_CONSOLE_DOTNET` and `LOCAL_LLM_CONSOLE_DOTNET` variables are still accepted.
+Запускайте из чистого рабочего дерева (checkout) с SDK .NET 10, выбранным
+файлом `global.json` и доступным в `PATH`, либо задайте переменную
+`LLAMA_CPP_WINDOWS_MANAGER_DOTNET` с явным путём к `dotnet.exe` SDK.
+Устаревшие переменные `LLAMA_CPP_CONSOLE_DOTNET` и `LOCAL_LLM_CONSOLE_DOTNET`
+по-прежнему принимаются.
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-app.ps1 -Restore
@@ -14,19 +18,21 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\publish-app.ps
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1
 ```
 
-The same source-level gate can be run through the local wrapper, with packaging
-included when the machine has Inno Setup and any required signing certificate:
+Ту же проверку на уровне исходников можно выполнить через локальную обёртку;
+упаковка включается, если на машине есть Inno Setup и требуемый сертификат
+подписи:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\test-release-gate.ps1 -IncludePublish -IncludeInstaller
 ```
 
-Add `-RequireCleanTree` to `scripts/test-release-gate.ps1`,
-`scripts/publish-app.ps1`, or `scripts/build-installer.ps1` when packaging release artifacts; the scripts fail if
-`git status --porcelain --untracked-files=all` reports any tracked or untracked
-worktree changes.
+При упаковке артефактов релиза добавляйте `-RequireCleanTree` в
+`scripts/test-release-gate.ps1`, `scripts/publish-app.ps1` или
+`scripts/build-installer.ps1`; скрипты завершатся ошибкой, если
+`git status --porcelain --untracked-files=all` сообщит о каких-либо
+отслеживаемых или неотслеживаемых изменениях в рабочем дереве.
 
-Trusted signed release builds use:
+Доверенные подписанные сборки релиза используют:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\publish-app.ps1 -CertificateThumbprint "<cert-thumbprint>" -RequireSigned
@@ -34,323 +40,324 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-installe
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\test-release-gate.ps1 -IncludePublish -IncludeInstaller -CertificateThumbprint "<cert-thumbprint>" -RequireSigned
 ```
 
-Trusted signed GitHub release builds may run `.github/workflows/release.yml`
-manually with the protected `release` environment and its
-`WINDOWS_SIGNING_PFX_BASE64` and `WINDOWS_SIGNING_PFX_PASSWORD` secrets
-configured. Version tags do not trigger that optional signing workflow.
-Unsigned releases must pass the normal release gate, include matching SHA-256
-companions, and be described as unsigned.
+Доверенные подписанные сборки релиза GitHub могут запускать
+`.github/workflows/release.yml` вручную с защищённой средой `release` и
+настроенными секретами `WINDOWS_SIGNING_PFX_BASE64` и
+`WINDOWS_SIGNING_PFX_PASSWORD`. Теги версий не запускают этот дополнительный
+рабочий процесс подписи. Неподписанные релизы должны пройти обычный контроль
+выпуска, содержать соответствующие файлы-компаньоны SHA-256 и быть описаны как
+неподписанные.
 
-## Release Gate
+## Контроль выпуска
 
-- Publish `dist\LlamaCppWindowsManager-win-x64.zip` and `dist\LlamaCppWindowsManager-win-x64\LlamaCppWindowsManager.exe` from a clean checkout.
-- Build `dist\installer\LlamaCppWindowsManager-Setup-2.2.0-win-x64.exe` from the published app with Inno Setup 6.
-- Confirm the publish folder contains no `.pdb` files.
-- Confirm the portable zip, published executable, and installer each have a matching `.sha256` companion file. For signed builds, generate the companion file after signing.
-- Confirm signed installer builds fail before compilation if `-SkipPublish`
-  points at an unsigned published executable.
-- Confirm the portable zip contains `LlamaCppWindowsManager.exe` and does not contain the removed `LlamaCppConsole.exe` alias.
-- Confirm the portable zip and installer contain `LICENSE`,
-  `THIRD-PARTY-NOTICES.md`, `licenses\Apache-2.0.txt`, and the bundled .NET
-  license/notices. Run executable-only `--bootstrap-agent-sidecars-only`
-  verification and confirm all compliance notices are restored beside the app.
-- Confirm the protected signing workflow pins third-party actions to immutable
-  commit SHAs and installs the exact Inno Setup version before importing the
-  code-signing certificate.
-- Confirm fresh installer default path is `D:\LlamaCppWindowsManager` when `D:` exists, `%LocalAppData%\Programs\LlamaCppWindowsManager` when it does not, and that the setup wizard still allows the user to change the install folder.
-- Confirm the installer detects an existing install and reuses its install directory on update or repair.
-- Confirm the final installer page can launch `LlamaCppWindowsManager.exe`.
-- Confirm fresh installer setups offer Start with Windows checked by default,
-  and that Settings can disable or re-enable the current-user startup entry.
-- Confirm installer update/repair does not delete `data`, models, runtimes, cache, logs, or state.
-- Confirm uninstall keeps `data` by default and only deletes it when the user explicitly chooses to delete app data.
-- Launch the published app on a clean Windows user profile with no repository checkout.
-- Confirm only one app instance can run in the same user session.
-- Confirm Runtime Downloads can check the upstream official llama.cpp release feed and list the official prebuilt packages for CUDA Windows, CUDA WSL, Vulkan Windows, Vulkan WSL, Intel Arc SYCL Windows, Intel Arc SYCL WSL, CPU Windows, and CPU WSL.
-- Confirm Runtimes has no advanced-view toggle or Runtime Jobs section, and each Runtime Downloads row places a compact **Build from source** action—sized consistently with the other row actions—immediately left of **Install**. Confirm job supervision and control remain available through Logs and `llwmctl`.
-- Confirm **Saved Launch Profiles** has no redundant **Open Folder** column; **Model Files** retains the folder action for the actual GGUF.
-- Confirm a source row progresses **Check** -> **Download** -> **Build**, direct download is blocked before a successful source check, and a successful table build deletes its downloaded source and resets the action to **Check**.
-- Confirm **Installed Local Builds** and **Runtime Downloads** each share one header row with their right-aligned Type and Platform filters, with no redundant descriptive sentence below either title. Confirm Type filters select AMD/Vulkan, Intel/SYCL, or NVIDIA/CUDA and Platform filters select Windows or Linux/WSL on both inventories. Confirm CPU rows remain under All and filtering never hides Add custom source repository.
-- Confirm Runtime Downloads can check the Atomic TurboQuant binary feed, install the Windows CUDA package when published, and show the WSL CUDA row as not published until a matching Linux/WSL asset exists.
-- Confirm runtime package downloads fail closed when the downloaded byte count
-  does not match release metadata or when no SHA-256 metadata/companion checksum
-  is available for a required package asset.
-- Confirm installing a prebuilt runtime does not require Git, CMake, Visual Studio Build Tools, WSL build tools, or source checkout.
-- Confirm installed prebuilt runtimes are registered, can be selected per model, and show update/delete state on the Runtime Downloads page.
-- Confirm changing the runtime on the Models launch form immediately clears the previous runtime's discovered controls, names the runtime being scanned, and renders only the newly selected executable's safe options in grouped two-column sections without dropping unmatched custom parameters. Confirm discovered editors match the curated 28px control sizing and compact field proportions, readable labels replace raw flags, exact `--flag-name` searches still work, and unknown text/choice defaults remain visually blank. Confirm advertised positive/negative switch pairs cycle Default/Enabled/Disabled and emit the matching alias, unpaired switches expose only their advertised direction, and search-filtered runtime options reflow without blank half-rows.
-- Confirm official prebuilt CUDA downloads include the matching runtime DLL/archive companion when upstream publishes one.
-- Confirm source-built official runtimes can be reconciled with matching prebuilt runtimes by local runtime fingerprint.
-- Confirm WSL is installed and the configured Ubuntu distro exists when a WSL runtime or WSL source build is selected, or missing prerequisites are reported clearly.
-- Confirm the WSL Linux page detects `wsl.exe`, installed distros, the WSL default distro, and the app-selected distro.
-- Confirm Docker-managed WSL distros such as `docker-desktop` are not shown as selectable runtime distros.
-- Confirm the app prefers an installed Ubuntu distro instead of keeping a missing hardcoded distro.
-- Confirm WSL install appears when WSL is missing.
-- Confirm Ubuntu install appears when WSL exists but no Ubuntu distro is installed.
-- Confirm Ubuntu install attempts to install `cmake` and the CPU build toolchain after the distro is ready.
-- Confirm the WSL Linux page offers an Install CPU Tools action for existing Ubuntu distros and does not imply CUDA is installed.
-- Confirm the WSL Linux page offers an Install CUDA action for existing Ubuntu distros and that it verifies `nvcc` and `libcudart`.
-- Confirm the WSL Linux page offers an Install Vulkan action for existing Ubuntu distros and that it verifies `vulkaninfo --summary`.
-- Confirm the WSL Linux page offers Intel GPU runtime and Intel oneAPI actions for existing Ubuntu distros and that they verify `sycl-ls`/Level Zero visibility for SYCL.
-- Confirm the Windows page detects Git, CMake, MSVC, CUDA, Vulkan, Intel oneAPI/SYCL tools, and whether an Intel GPU is visible to `sycl-ls`.
-- Confirm CPU/CUDA/Vulkan/SYCL actions switch to Update/Repair when detected and show Delete actions only when detected.
-- Confirm Delete WSL and Delete Ubuntu actions require explicit confirmation and open visible PowerShell.
-- Confirm WSL and Ubuntu update checks appear when those components are installed.
-- Confirm the WSL row shows Install WSL when WSL is missing and Update WSL when WSL exists.
-- Confirm the Ubuntu row shows Install Ubuntu when Ubuntu is missing and Update Ubuntu when Ubuntu exists.
-- Confirm the local service binds only to `127.0.0.1`.
-- Confirm model serving defaults to local-only `127.0.0.1`.
-- Confirm Settings LAN exposure maps Local only to loopback, Gateway LAN only to the router listener, Direct models LAN only to runtime hosts, and Gateway + direct LAN to both serving surfaces.
-- Confirm Settings LAN exposure changes only model-serving endpoints, not the app-local control service.
-- Confirm the Overview Loaded Model Sessions grid shows an auto-load gateway
-  router row with endpoint, policy, LAN exposure, and current direct-session
-  count.
-- Double-click a running model row and click its direct endpoint link. Confirm
-  both open the themed endpoint report populated from `/health`, `/v1/models`,
-  `/props`, and `/slots`, including context, output limit, reasoning/template
-  capability, sampling defaults, and current slot state without generating text.
-- Inspect the gateway row and endpoint link. Confirm the report shows advertised
-  profile model IDs, running sessions, policy, and exposure, and explains that
-  context/reasoning/output defaults belong to each routed model. Confirm a runtime
-  without `/props` or `/slots` still shows available data plus a compact warning.
-- Confirm Overview places Model, Launch profile, and Load on one row; Model and
-  Launch profile retain fixed practical widths at non-maximized window sizes.
-  When a model is running, selecting its active profile hides Load, while
-  selecting a different profile shows Load and replaces the model session with
-  that exact saved profile.
-- Confirm the Overview Model Status card shows Loading Model / Loaded Model and
-  Loading Time as separate rows, and that Loading Time remains at the completed
-  duration after the model becomes ready.
-- At the default window size, confirm Overview uses two metric-card columns with
-  no clipped card content and the loaded-session Runtime column remains readable;
-  maximize the window and confirm the cards reflow to three columns.
-- Confirm Overview token monitors use two compact rows in the form
-  `0.0 t/s (Gen) | 0.0 t/s (Avg) | 0 t (Total)`, with matching Prompt and
-  Accepted rows, live rates falling back to `0.0 t/s` when idle, and average or
-  total segments omitted when those values are unavailable. Run two parallel
-  requests and confirm totals continue increasing after either slot is reused.
-- Confirm Tokens, Speculative Tokens, and KV Cache show compact trend graphs on
-  the bottom row, retain at most 60 samples, and reset when the selected runtime
-  changes. Confirm Slots appears on the top row and shows active/total capacity,
-  queued requests, and busy decode slots.
-- Confirm the Overview Hardware card shows CPU temperature for CPU-backed
-  sessions, uses NVIDIA metrics for CUDA when available, falls back to Windows
-  GPU performance counters for AMD/Intel/Vulkan-backed sessions, and does not
-  show stale cached hardware data after switching runtimes.
-- Confirm the Settings API key Generate action creates a new model API key.
-- Confirm the gateway `/v1/models` response lists every saved launch profile and
-  requesting another profile for a running model restarts it with that profile.
-- Confirm Settings is separated into named category sections arranged in two
-  equal-width columns rather than one large full-width settings grid. Confirm
-  Network and UI remain in opposite columns and narrow values/actions do not
-  force a page-level horizontal scrollbar.
-- Confirm Settings uses readable 28px editors inside compact rows, narrow
-  right-aligned dropdowns, no Save Settings button, and a visible automatic-apply
-  hint. Confirm Network has no blanket Action column and API-key Show, Copy, and
-  Generate controls appear only inside the API-key value row.
-- Confirm Settings includes a **UI** category with
-  independent switches for Model status, Hardware, Slots, Tokens, Speculative
-  tokens, KV cache, Live Runtime Log, All llama.cpp Metrics, and the Models
-  Hugging Face section. Confirm these choices read **Show/Hide**, each switch applies automatically, hidden rows
-  leave no blank splitter/space, card layout reflows, and choices persist after
-  restart.
-- Confirm a workspace without stored UI visibility keys defaults the six status
-  cards and live log to `Show`, and raw metrics and Hugging Face to `Hide`. Use
-  `llwmctl settings set` followed by `llwmctl settings get` to verify the same
-  nine fields can be changed and read back through the live Manager without
-  restarting it.
-- Confirm the compact title-bar menu icon collapses the full navigation sidebar,
-  expands the current page without navigating away, and restores the sidebar on
-  the next activation.
-- Confirm Settings shows cache size at the top and Clear removes cache contents only when downloads/builds are idle.
-- Confirm Help opens with six compact categories and collapsed task articles,
-  category selection filters without leaving stale search text, and article
-  actions navigate to the correct app page.
-- Confirm Help search updates immediately across every category, ranks useful
-  matches for API key, 401, GGUF, CUDA, memory, port, and download queries,
-  exposes a useful empty state, and can be cleared with the button or Escape.
-- Confirm Ctrl+F focuses Help search and that the search field, category actions,
-  result announcement, expanders, and navigation buttons expose automation names.
-- Switch Help to one of Arabic, Bulgarian, Czech, German, Spanish, Persian,
-  French, Hindi, Indonesian, Italian, or Japanese and confirm its
-  category text, complete article content, actions, search state, and search
-  results are translated and searchable. Other language packs currently use
-  English fallbacks for the newly rebuilt Help articles.
-- Confirm **Saved Launch Profiles** shows a compact Group column, ungrouped rows
-  expose an unclipped inline **Add** button, grouped rows expose their group name
-  with **Change group…** and **Remove from group**, and **Groups…** opens a compact
-  table matching the Runtimes grids. The **New group** dialog captures name, keep-live policy, idle
-  timeout, and eviction priority, **Edit** changes all four while preserving
-  membership, **Profiles…** supports multi-select launch-profile assignment and removal, and
-  right-click **Assign to group…** can assign a profile or return it to global policy.
-- Confirm Overview lists `Group · name (count)` choices after physical models.
-  A valid group starts all assigned profiles; duplicate-model, unavailable-runtime,
-  port-conflict, missing-GPU-telemetry, and aggregate-VRAM failures display an error
-  before any member starts. Confirm CPU-only groups work without VRAM telemetry.
-- Switch between Dark and Light without restarting on Models while the launch
-  settings form is visible. Confirm every panel changes theme, then inspect Overview,
-  Runtimes, and Settings for distinct sidebar, page, card, header, input, alternate-row,
-  border, hover, selection, disabled, success, warning, and danger surfaces.
-- Confirm launch-profile groups persist across restart; profiles of the same model
-  can use different policies, and deleting a group clears membership
-  without deleting GGUF files, model registrations, running sessions, or launch profiles.
-- Confirm pinned models are excluded from automatic idle unload, group idle timeout
-  overrides the global timeout, and simultaneous quiet candidates unload one at a
-  time in low/normal/high eviction-priority order. Confirm active slots are not
-  unloaded and priority does not change inference request ordering.
-- Confirm `llwmctl groups` CRUD/assign/unassign commands and the corresponding
-  `/api/v1/model-groups` and `/api/v1/models/{model}/profiles/{profile}/group`
-  routes update the running Manager and appear on launch profiles in normal model inventory results.
-- Confirm local-only model serving launches with an API key, direct
-  `/v1/chat/completions` rejects missing or invalid credentials, and the gateway
-  rejects unauthenticated `/v1/models` requests. Upstream direct health or model
-  catalog metadata may be public and is not an inference-authentication test.
-- Load a model and run `llwmctl sessions inspect <session>`; confirm health,
-  models, defaults, and slots are returned without the serving API key appearing
-  in the response or Control API log. Run `llwmctl gateway inspect` and confirm
-  the same authenticated behavior through the shared gateway.
-- Confirm the persisted model API key is protected at rest for the current Windows user.
-- Confirm ports outside `1..65535` are rejected on Settings save.
-- Confirm model serving cannot launch without a strong model API key in any
-  local-only or LAN exposure mode.
-- Confirm control-API settings patches cannot disable API-key authentication,
-  replace protected secrets/workspace paths, use invalid ports, or enable the
-  gateway on a port occupied by a running model.
-- At 100%, 125%, 150%, and 200% display scale, confirm the initial window fits
-  the monitor work area and the Overview model/profile/load bar reflows without
-  clipping at narrow widths.
-- Confirm Arabic and Persian switch the shell and owned dialogs to right-to-left
-  flow. Confirm Arabic and Hindi are visibly labeled as partial previews, while
-  production language packs pass the localization coverage floor.
-- Open Model Groups and inspect a direct endpoint and the gateway in at least one
-  non-English language. Confirm titles, buttons, columns, validation messages,
-  report fields, and status messages are translated; repeat in Arabic or Persian
-  and confirm owned dialogs use right-to-left flow.
-- With Windows Narrator or Accessibility Insights, confirm custom title-bar
-  buttons and the language selector have accessible names, changing status is
-  announced politely, section titles are headings, and row-action buttons expose
-  both names and help text.
-- Confirm a LAN client can reach the selected OpenAI-compatible `/v1` serving
-  surface only after Windows Firewall and WSL networking allow the configured
-  gateway or direct model port.
-- Confirm the WPF app is the only user-facing surface; no web UI is launched.
-- Confirm no command prompt windows remain open for app services.
-- Confirm app-local API requests without the session token return `401`.
-- Confirm SQLite state tables are created under the startup workspace.
-- Confirm corrupt settings are backed up and defaulted.
-- Confirm corrupt SQLite DB files are quarantined and the app recreates state.
-- Confirm interrupted jobs are marked `Interrupted` on restart and can be resumed or removed.
-- Confirm oversized auto-load gateway request bodies are rejected with `413`
-  before proxying to a model runtime.
-- Confirm Hugging Face downloads cannot write outside the configured models folder.
-- Confirm completed downloads are not registered when the final byte count mismatches the expected size or no expected size/SHA-256 metadata exists.
-- Confirm imported external model deletion removes only app registration files.
-- Confirm app-owned downloaded model deletion cannot escape the configured model root.
-- Confirm vision-capable model settings persist image min/max token allowances and launch `llama-server` with `--image-min-tokens` / `--image-max-tokens` when set.
-- Confirm per-model Vision head choices persist for auto-detect,
-  embedded/model-bundled, and explicit external projectors; explicit projectors
-  launch with `--mmproj`, while embedded choices omit `--mmproj`. Confirm auto
-  discovery searches only the exact model folder and does not infer embedded
-  vision from a vision-capable language GGUF.
-- Confirm per-model MTP head choices persist separately from Vision head,
-  `Spec type = atomic-mtp` launches legacy compatible forks with `--spec-type mtp --mtp-head`, an embedded positive
-  `*.nextn_predict_layers` value makes `draft-mtp` omit `--model-draft`, and an
-  explicitly selected external draft model still launches with
-  `--model-draft`. Confirm each draft type selects only its matching MTP,
-  DFlash, DSpark, Eagle3, or simple-draft category; parent/child folders and
-  incompatible family, version, or target-size helpers are not auto-selected.
-- Confirm `Spec type = draft-dspark` launches a DSpark GGUF with
-  `--spec-type draft-dspark --model-draft <path> --spec-draft-n-max 7` on a
-  llama.cpp b10164-or-newer runtime and reports draft acceptance metrics.
-- Confirm GPU mode `single` emits `--split-mode none`, multi-GPU modes emit the
-  selected `layer`, `row`, or `tensor` split mode, and optional GPU device IDs
-  and proportions emit `--device` and `--tensor-split`.
-- Confirm downloaded runtime source and build deletion cannot escape the configured runtimes folder.
-- Confirm Runtime Downloads table builds always delete the downloaded source after success. Confirm lower-level source-build operations delete the source when Settings > Runtime > Delete source after build is `Yes` and preserve it when set to `No`.
-- Confirm multiple models can be loaded at the same time on different saved model ports when hardware capacity allows it.
-- Confirm the auto-load gateway serves one shared `/v1` endpoint, launches the
-  requested model on its saved direct port, and proxies requests to that direct
-  endpoint.
-- Confirm Gateway policy > Prefer keeping loaded models preserves existing
-  sessions and blocks/warns clearly when VRAM admission predicts that another
-  GPU model is unsafe.
-- Confirm Gateway policy > Single active model unloads other direct sessions
-  before loading the requested model.
-- Confirm CPU-only Ubuntu/WSL llama.cpp source build path succeeds after Install CPU Tools, or fails early if Git/CMake/compiler tools are still missing inside Ubuntu.
-- Confirm CUDA Ubuntu/WSL llama.cpp source build path succeeds after Install CUDA on supported NVIDIA hardware, or fails early with a clear driver/toolkit error.
-- Confirm Vulkan Ubuntu/WSL llama.cpp source build path succeeds after Install Vulkan on supported WSL Vulkan hardware, or fails early with a clear driver/toolkit error.
-- Confirm Intel Arc SYCL Windows and WSL launches/source builds fail early with clear oneAPI/SYCL prerequisite messages when tools or Level Zero GPU visibility are missing.
-- Confirm custom runtime repository row can add an HTTPS repo and then download/check/delete it from Runtime Repositories.
-- Confirm CUDA runtime builds fail before CMake with a clear message when `nvcc` or `libcudart`/CUDA Toolkit runtime libraries are missing inside the selected WSL distro.
-- Confirm Vulkan runtime builds fail before CMake with a clear message when Vulkan headers, `glslc`, `vulkaninfo`, `libvulkan.so`, SPIR-V headers, or a WSL-visible Vulkan device are unavailable.
-- Confirm no harness-specific configuration page or settings appear in the app.
-- Confirm startup update checks change the left-nav Updates item to Install Update when a newer GitHub release exists.
-- Confirm manual Check For Updates shows a no-update popup when current, or an install confirmation when a newer release exists.
-- Confirm the GitHub release includes the portable ZIP and standalone
-  `LlamaCppWindowsManager.exe`, each with its matching SHA-256 companion. The
-  standalone asset preserves in-app updates from v1.x, v2.0, and v2.1; a bad checksum
-  must prevent staging.
-- Confirm a signed installed app refuses an unsigned or differently signed staged update.
-- Confirm a completed staged update restarts `LlamaCppWindowsManager.exe` and shows the GitHub release notes.
-- Confirm an older renamed portable install migrates to `LlamaCppWindowsManager.exe` and removes the obsolete executable after shutdown.
+- Публикуйте `dist\LlamaCppWindowsManager-win-x64.zip` и `dist\LlamaCppWindowsManager-win-x64\LlamaCppWindowsManager.exe` из чистого рабочего дерева.
+- Собирайте `dist\installer\LlamaCppWindowsManager-Setup-2.2.0-win-x64.exe` из опубликованного приложения с помощью Inno Setup 6.
+- Убедитесь, что в папке публикации нет файлов `.pdb`.
+- Убедитесь, что у переносимого zip-архива, опубликованного исполняемого файла и установщика есть соответствующий файл-компаньон `.sha256`. Для подписанных сборок создавайте файл-компаньон после подписи.
+- Убедитесь, что сборка подписанного установщика завершается ошибкой до компиляции, если `-SkipPublish`
+  указывает на неподписанный опубликованный исполняемый файл.
+- Убедитесь, что переносимый zip-архив содержит `LlamaCppWindowsManager.exe` и не содержит удалённого алиаса `LlamaCppConsole.exe`.
+- Убедитесь, что переносимый zip-архив и установщик содержат `LICENSE`,
+  `THIRD-PARTY-NOTICES.md`, `licenses\Apache-2.0.txt` и встроенные
+  лицензии/уведомления .NET. Выполните проверку только исполняемого файла с
+  `--bootstrap-agent-sidecars-only` и убедитесь, что все уведомления о
+  соответствии восстановлены рядом с приложением.
+- Убедитесь, что защищённый рабочий процесс подписи закрепляет сторонние
+  действия (actions) за неизменяемыми SHA коммитов и устанавливает точную
+  версию Inno Setup до импорта сертификата подписи кода.
+- Убедитесь, что путь установки по умолчанию — `D:\LlamaCppWindowsManager`, когда диск `D:` существует, и `%LocalAppData%\Programs\LlamaCppWindowsManager`, когда его нет; мастер установки должен по-прежнему позволять пользователю изменить папку установки.
+- Убедитесь, что установщик обнаруживает существующую установку и повторно использует её каталог при обновлении или восстановлении.
+- Убедитесь, что с финальной страницы установщика можно запустить `LlamaCppWindowsManager.exe`.
+- Убедитесь, что при новой установке параметр «Запускать вместе с Windows» включён по умолчанию,
+  а в настройках можно отключить или снова включить автозапуск для текущего пользователя.
+- Убедитесь, что обновление/восстановление установщика не удаляет `data`, модели, среды выполнения, кэш, журналы или состояние.
+- Убедитесь, что при удалении `data` сохраняется по умолчанию и удаляется только тогда, когда пользователь явно выбирает удаление данных приложения.
+- Запустите опубликованное приложение на чистом профиле пользователя Windows без рабочего дерева репозитория.
+- Убедитесь, что в одной пользовательской сессии может работать только один экземпляр приложения.
+- Убедитесь, что «Загрузка сред выполнения» может проверить официальный канал релизов вышестоящего llama.cpp и перечислить официальные готовые пакеты для CUDA Windows, CUDA WSL, Vulkan Windows, Vulkan WSL, Intel Arc SYCL Windows, Intel Arc SYCL WSL, CPU Windows и CPU WSL.
+- Убедитесь, что на странице «Среды выполнения» нет переключателя расширенного вида и раздела «Задания сред выполнения», а в каждой строке «Загрузки сред выполнения» слева от **Установить** находится компактное действие **Собрать из исходников** — размером, согласованным с другими действиями строки. Убедитесь, что наблюдение за заданиями и управление ими остаются доступны через **Журналы** и `llwmctl`.
+- Убедитесь, что в **Сохранённых профилях запуска** нет лишнего столбца **Открыть папку**; в **Файлах моделей** действие открытия папки сохранено для реальных файлов GGUF.
+- Убедитесь, что строка исходников проходит этапы **Проверить** -> **Загрузить** -> **Собрать**, прямая загрузка блокируется до успешной проверки исходников, а успешная сборка из таблицы удаляет загруженные исходники и сбрасывает действие обратно на **Проверить**.
+- Убедитесь, что **Установленные локальные сборки** и **Загрузка сред выполнения** используют одну общую строку заголовка с выровненными по правому краю фильтрами «Тип» и «Платформа», без лишних описательных предложений под заголовками. Убедитесь, что фильтр «Тип» выбирает AMD/Vulkan, Intel/SYCL или NVIDIA/CUDA, а фильтр «Платформа» — Windows или Linux/WSL на обоих списках. Убедитесь, что строки CPU остаются в разделе «Все», а фильтрация никогда не скрывает «Добавить пользовательский репозиторий исходников».
+- Убедитесь, что «Загрузка сред выполнения» может проверить канал двоичных сборок Atomic TurboQuant, установить пакет CUDA Windows, когда он опубликован, и показывать строку CUDA WSL как неопубликованную, пока не появится соответствующий артефакт Linux/WSL.
+- Убедитесь, что загрузка пакетов сред выполнения завершается с ошибкой (fail closed), когда количество
+  загруженных байт не совпадает с метаданными релиза или когда для обязательного
+  артефакта пакета нет SHA-256 метаданных/контрольной суммы-компаньона.
+- Убедитесь, что установка готовой среды выполнения не требует Git, CMake, Visual Studio Build Tools, инструментов сборки WSL или рабочего дерева исходников.
+- Убедитесь, что установленные готовые среды выполнения регистрируются, могут выбираться для каждой модели и показывают состояние обновления/удаления на странице «Загрузка сред выполнения».
+- Убедитесь, что при смене среды выполнения в форме запуска на странице «Модели» немедленно очищаются обнаруженные элементы управления прежней среды, выводится имя сканируемой среды и отображаются только безопасные параметры вновь выбранного исполняемого файла в сгруппированных двухколоночных секциях, без потери несовпадающих пользовательских параметров. Убедитесь, что обнаруженные поля редактирования соответствуют выверенному размеру элементов управления 28px и компактным пропорциям полей, читаемые подписи заменяют «сырые» флаги, точный поиск `--flag-name` по-прежнему работает, а неизвестные значения по умолчанию для текстовых полей и списков остаются визуально пустыми. Убедитесь, что заявленные пары переключателей положительный/отрицательный циклически проходят значения По умолчанию/Включено/Отключено и передают соответствующий алиас, непарные переключатели показывают только заявленное направление, а отфильтрованные поиском параметры среды перестраиваются без пустых полустрок.
+- Убедитесь, что официальные готовые загрузки CUDA включают соответствующий DLL/архив-компаньон среды выполнения, когда вышестоящий проект публикует его.
+- Убедитесь, что официальные среды выполнения, собранные из исходников, можно сопоставить с соответствующими готовыми средами по локальному отпечатку (fingerprint) среды.
+- Убедитесь, что при выборе среды WSL или сборки из исходников WSL проверяется наличие WSL и настроенного дистрибутива Ubuntu, либо отсутствующие предварительные требования чётко сообщаются.
+- Убедитесь, что страница WSL Linux обнаруживает `wsl.exe`, установленные дистрибутивы, дистрибутив WSL по умолчанию и выбранный приложением дистрибутив.
+- Убедитесь, что управляемые Docker дистрибутивы WSL, такие как `docker-desktop`, не показываются как выбираемые дистрибутивы сред выполнения.
+- Убедитесь, что приложение предпочитает установленный дистрибутив Ubuntu, а не сохраняет отсутствующий зашитый в код дистрибутив.
+- Убедитесь, что установка WSL предлагается, когда WSL отсутствует.
+- Убедитесь, что установка Ubuntu предлагается, когда WSL есть, но дистрибутив Ubuntu не установлен.
+- Убедитесь, что установка Ubuntu после готовности дистрибутива пытается установить `cmake` и инструментарий сборки CPU.
+- Убедитесь, что страница WSL Linux предлагает действие «Установить инструменты CPU» для существующих дистрибутивов Ubuntu и не подразумевает установленную CUDA.
+- Убедитесь, что страница WSL Linux предлагает действие «Установить CUDA» для существующих дистрибутивов Ubuntu и что оно проверяет `nvcc` и `libcudart`.
+- Убедитесь, что страница WSL Linux предлагает действие «Установить Vulkan» для существующих дистрибутивов Ubuntu и что оно проверяет `vulkaninfo --summary`.
+- Убедитесь, что страница WSL Linux предлагает для существующих дистрибутивов Ubuntu действия со средой выполнения Intel GPU и Intel oneAPI и что они проверяют видимость `sycl-ls`/Level Zero для SYCL.
+- Убедитесь, что страница Windows обнаруживает Git, CMake, MSVC, CUDA, Vulkan, инструменты Intel oneAPI/SYCL и видимость GPU Intel для `sycl-ls`.
+- Убедитесь, что действия CPU/CUDA/Vulkan/SYCL переключаются на Обновить/Восстановить, когда компоненты обнаружены, а действия «Удалить» показываются только для обнаруженных компонентов.
+- Убедитесь, что действия «Удалить WSL» и «Удалить Ubuntu» требуют явного подтверждения и открывают видимое окно PowerShell.
+- Убедитесь, что проверки обновления WSL и Ubuntu появляются, когда эти компоненты установлены.
+- Убедитесь, что строка WSL показывает «Установить WSL», когда WSL отсутствует, и «Обновить WSL», когда WSL существует.
+- Убедитесь, что строка Ubuntu показывает «Установить Ubuntu», когда Ubuntu отсутствует, и «Обновить Ubuntu», когда Ubuntu существует.
+- Убедитесь, что локальная служба привязывается только к `127.0.0.1`.
+- Убедитесь, что обслуживание моделей по умолчанию ограничено локальным адресом `127.0.0.1`.
+- Убедитесь, что параметр «Доступ из локальной сети» в настройках сопоставляет «Только локально» с loopback, «Только шлюз LAN» — со слушателем маршрутизатора, «Только прямые модели LAN» — с хостами сред выполнения, а «Шлюз + прямые модели LAN» — с обеими поверхностями обслуживания.
+- Убедитесь, что параметр «Доступ из локальной сети» меняет только конечные точки обслуживания моделей, а не локальную управляющую службу приложения.
+- Убедитесь, что в сетке «Загруженные сессии моделей» на странице **Обзор** есть строка
+  маршрутизатора шлюза автозагрузки с конечной точкой, политикой, доступом из LAN
+  и текущим количеством прямых сессий.
+- Дважды щёлкните строку запущенной модели и щёлкните ссылку её прямой конечной точки. Убедитесь,
+  что оба действия открывают тематический отчёт о конечной точке, заполняемый из `/health`, `/v1/models`,
+  `/props` и `/slots`, включая контекст, лимит вывода, поддержку reasoning/template,
+  настройки сэмплирования по умолчанию и текущее состояние слотов, без генерации текста.
+- Изучите строку шлюза и ссылку конечной точки. Убедитесь, что отчёт показывает заявленные
+  ID моделей профилей, запущенные сессии, политику и уровень доступа и поясняет, что
+  значения контекста/reasoning/вывода по умолчанию принадлежат каждой маршрутизируемой модели. Убедитесь, что среда выполнения
+  без `/props` или `/slots` по-прежнему показывает доступные данные и компактное предупреждение.
+- Убедитесь, что на странице **Обзор** элементы «Модель», «Профиль запуска» и «Загрузить» находятся в одной строке; «Модель» и
+  «Профиль запуска» сохраняют фиксированную практичную ширину при неразвёрнутом окне.
+  Когда модель запущена, выбор её активного профиля скрывает «Загрузить», а
+  выбор другого профиля показывает «Загрузить» и заменяет сессию модели ровно
+  этим сохранённым профилем.
+- Убедитесь, что карточка «Статус модели» на странице **Обзор** показывает «Загрузка модели / Модель загружена» и
+  «Время загрузки» отдельными строками и что «Время загрузки» сохраняет итоговую
+  длительность после готовности модели.
+- При размере окна по умолчанию убедитесь, что страница **Обзор** использует две колонки карточек метрик с
+  необрезанным содержимым и что столбец «Среда выполнения» загруженных сессий остаётся читаемым;
+  разверните окно и убедитесь, что карточки перестраиваются в три колонки.
+- Убедитесь, что мониторы токенов на странице **Обзор** используют две компактные строки вида
+  `0.0 t/s (Gen) | 0.0 t/s (Avg) | 0 t (Total)`, с соответствующими строками Prompt (подсказки) и
+  Accepted (принятые), что живые скорости при простое сбрасываются к `0.0 t/s`, а сегменты среднего или
+  итога опускаются, когда эти значения недоступны. Выполните два параллельных
+  запроса и убедитесь, что итоги продолжают расти после повторного использования любого слота.
+- Убедитесь, что «Токены», «Спекулятивные токены» и «Кэш KV» показывают компактные графики трендов в
+  нижней строке, хранят не более 60 отсчётов и сбрасываются при смене выбранной среды
+  выполнения. Убедитесь, что «Слоты» отображаются в верхней строке и показывают активную/общую ёмкость,
+  запросы в очереди и занятые слоты декодирования.
+- Убедитесь, что карточка «Оборудование» на странице **Обзор** показывает температуру CPU для сессий
+  на CPU, использует метрики NVIDIA для CUDA, когда они доступны, применяет счётчики производительности
+  GPU Windows для сессий на AMD/Intel/Vulkan и не показывает устаревшие кэшированные данные
+  об оборудовании после смены среды выполнения.
+- Убедитесь, что действие «Создать» для API-ключа в настройках создаёт новый API-ключ модели.
+- Убедитесь, что ответ шлюза `/v1/models` перечисляет все сохранённые профили запуска, а
+  запрос другого профиля для запущенной модели перезапускает её с этим профилем.
+- Убедитесь, что «Настройки» разделены на именованные секции категорий, расположенные в две
+  колонки равной ширины, а не в одну большую сетку настроек на всю ширину. Убедитесь, что
+  «Сеть» и «Интерфейс» остаются в противоположных колонках, а узкие значения/действия не
+  вызывают горизонтальную полосу прокрутки на уровне страницы.
+- Убедитесь, что в «Настройках» используются читаемые поля редактирования 28px внутри компактных строк, узкие
+  выпадающие списки с выравниванием вправо, отсутствует кнопка «Сохранить настройки» и есть заметная подсказка
+  об автоматическом применении. Убедитесь, что в разделе «Сеть» нет общего столбца «Действие», а элементы
+  управления API-ключа «Показать», «Копировать» и «Создать» появляются только внутри строки значения API-ключа.
+- Убедитесь, что в «Настройках» есть категория **Интерфейс** с
+  независимыми переключателями для «Статуса модели», «Оборудования», «Слотов», «Токенов», «Спекулятивных
+  токенов», «Кэша KV», «Живого журнала среды выполнения», «Всех метрик llama.cpp» и раздела «Модели»
+  (Hugging Face). Убедитесь, что эти параметры читаются как **Показать/Скрыть**, каждый переключатель применяется автоматически, скрытые строки
+  не оставляют пустых разделителей/промежутков, раскладка карточек перестраивается, а выбор сохраняется после
+  перезапуска.
+- Убедитесь, что в рабочем пространстве без сохранённых ключей видимости интерфейса шесть карточек
+  состояния и живой журнал по умолчанию имеют значение `Show`, а «сырые» метрики и Hugging Face — `Hide`. Используйте
+  `llwmctl settings set`, а затем `llwmctl settings get`, чтобы проверить, что те же
+  девять полей можно изменить и прочитать через запущенный Manager без
+  его перезапуска.
+- Убедитесь, что компактная иконка меню в строке заголовка сворачивает полную боковую панель навигации,
+  разворачивает текущую страницу без перехода и восстанавливает панель при следующей активации.
+- Убедитесь, что в «Настройках» размер кэша показан вверху, а «Очистить» удаляет содержимое кэша только когда загрузки/сборки неактивны.
+- Убедитесь, что «Справка» открывается с шестью компактными категориями и свёрнутыми статьями задач,
+  выбор категории фильтрует без сохранения устаревшего текста поиска, а действия статей ведут на правильные страницы приложения.
+- Убедитесь, что поиск в «Справке» обновляется мгновенно по всем категориям, ранжирует полезные
+  совпадения для запросов об API-ключе, 401, GGUF, CUDA, памяти, порте и загрузках,
+  показывает полезное пустое состояние и очищается кнопкой или клавишей Escape.
+- Убедитесь, что Ctrl+F фокусирует поиск в «Справке» и что поле поиска, действия категорий,
+  объявление результатов, раскрывающиеся элементы и кнопки навигации имеют имена для автоматизации (accessibility).
+- Переключите «Справку» на один из языков — арабский, болгарский, чешский, немецкий, испанский, персидский,
+  французский, хинди, индонезийский, итальянский или японский — и убедитесь, что его
+  тексты категорий, полное содержимое статей, действия, состояние поиска и результаты
+  поиска переведены и доступны для поиска. Остальные языковые пакеты сейчас
+  используют английские запасные варианты для недавно пересобранных статей справки.
+- Убедитесь, что **Сохранённые профили запуска** показывают компактный столбец «Группа», у несгруппированных строк
+  есть необрезанная встроенная кнопка **Добавить**, у сгруппированных строк отображается имя группы
+  с пунктами **Изменить группу…** и **Удалить из группы**, а **Группы…** открывает компактную
+  таблицу в стиле сеток «Среды выполнения». Диалог **Новая группа** собирает имя, политику удержания (keep-live), таймаут
+  простоя и приоритет вытеснения, **Изменить** меняет все четыре параметра с сохранением
+  членства, **Профили…** поддерживает назначение и удаление профилей запуска с множественным выбором, а
+  пункт контекстного меню **Назначить в группу…** может назначить профиль в группу или вернуть его к глобальной политике.
+- Убедитесь, что на странице **Обзор** после физических моделей перечислены варианты вида `Группа · имя (количество)`.
+  Корректная группа запускает все назначенные профили; ошибки из-за дублирующейся модели, недоступной среды выполнения,
+  конфликта портов, отсутствия телеметрии GPU и превышения суммарной VRAM отображаются
+  до запуска любого участника. Убедитесь, что группы только на CPU работают без телеметрии VRAM.
+- На странице **Модели** при открытой форме настроек запуска переключайтесь между тёмной и светлой
+  темами без перезапуска. Убедитесь, что все панели меняют тему, затем проверьте страницы **Обзор**,
+  **Среды выполнения** и **Настройки** на различимые состояния: боковая панель, страница, карточка, заголовок, поле ввода, чередующиеся строки,
+  границы, наведение, выделение, отключённые, успех, предупреждение и опасность.
+- Убедитесь, что группы профилей запуска сохраняются после перезапуска; профили одной модели
+  могут использовать разные политики, а удаление группы очищает членство
+  без удаления файлов GGUF, регистраций моделей, запущенных сессий или профилей запуска.
+- Убедитесь, что закреплённые модели исключены из автоматической выгрузки по простою, таймаут простоя группы
+  переопределяет глобальный таймаут, а одновременные «тихие» кандидаты выгружаются по
+  одному в порядке приоритета вытеснения низкий/обычный/высокий. Убедитесь, что активные слоты не
+  выгружаются, а приоритет не меняет порядок запросов на инференс.
+- Убедитесь, что команды `llwmctl groups` CRUD/assign/unassign и соответствующие
+  маршруты `/api/v1/model-groups` и `/api/v1/models/{model}/profiles/{profile}/group`
+  обновляют запущенный Manager и появляются в профилях запуска в обычных результатах инвентаризации моделей.
+- Убедитесь, что локальное обслуживание моделей запускается с API-ключом, прямой
+  `/v1/chat/completions` отклоняет отсутствующие или недействительные учётные данные, а шлюз
+  отклоняет неаутентифицированные запросы `/v1/models`. Публичные метаданные проверки состояния
+  или каталога моделей вышестоящего проекта не являются тестом аутентификации инференса.
+- Загрузите модель и выполните `llwmctl sessions inspect <session>`; убедитесь, что состояние,
+  модели, значения по умолчанию и слоты возвращаются без появления ключа обслуживания
+  в ответе или журнале Control API. Выполните `llwmctl gateway inspect` и убедитесь
+  в таком же аутентифицированном поведении через общий шлюз.
+- Убедитесь, что сохранённый API-ключ модели защищён в состоянии покоя для текущего пользователя Windows.
+- Убедитесь, что порты вне диапазона `1..65535` отклоняются при сохранении настроек.
+- Убедитесь, что обслуживание моделей не запускается без надёжного API-ключа модели ни в
+  одном из режимов «только локально» или «доступ из LAN».
+- Убедитесь, что патчи настроек через Control API не могут отключить аутентификацию по API-ключу,
+  заменить защищённые секреты/пути рабочего пространства, использовать недействительные порты или включить
+  шлюз на порту, занятом запущенной моделью.
+- При масштабе отображения 100%, 125%, 150% и 200% убедитесь, что начальное окно помещается
+  в рабочую область монитора, а панель модель/профиль/загрузка на странице **Обзор** перестраивается без
+  обрезания при узкой ширине.
+- Убедитесь, что арабский и персидский переводят оболочку и собственные диалоги на направление
+  справа налево. Убедитесь, что арабский и хинди явно помечены как частичные предварительные версии, а
+  производственные языковые пакеты проходят минимальный порог полноты локализации.
+- Откройте «Группы моделей» и проверьте прямую конечную точку и шлюз хотя бы на одном
+  неанглийском языке. Убедитесь, что заголовки, кнопки, столбцы, сообщения проверки,
+  поля отчёта и сообщения о статусе переведены; повторите на арабском или персидском
+  и убедитесь, что собственные диалоги используют направление справа налево.
+- С помощью Windows Narrator или Accessibility Insights убедитесь, что кнопки пользовательской
+  строки заголовка и селектор языка имеют доступные имена, изменение статуса объявляется
+  вежливо, заголовки секций оформлены как заголовки, а кнопки действий строк раскрывают
+  и имена, и вспомогательный текст.
+- Убедитесь, что LAN-клиент может получить доступ к выбранной OpenAI-совместимой поверхности
+  обслуживания `/v1` только после того, как брандмауэр Windows и сеть WSL разрешат настроенный
+  порт шлюза или прямой модели.
+- Убедитесь, что WPF-приложение — единственный пользовательский интерфейс; веб-интерфейс не запускается.
+- Убедитесь, что для служб приложения не остаются открытыми окна командной строки.
+- Убедитесь, что локальные запросы к API приложения без токена сессии возвращают `401`.
+- Убедитесь, что таблицы состояния SQLite создаются в рабочем пространстве запуска.
+- Убедитесь, что повреждённые настройки сохраняются в резервную копию и заменяются значениями по умолчанию.
+- Убедитесь, что повреждённые файлы базы SQLite помещаются в карантин, а приложение воссоздаёт состояние.
+- Убедитесь, что прерванные задания после перезапуска помечаются как `Interrupted` и могут быть возобновлены или удалены.
+- Убедитесь, что запросы с чрезмерно большим телом к шлюзу автозагрузки отклоняются с кодом `413`
+  до проксирования к среде выполнения модели.
+- Убедитесь, что загрузки Hugging Face не могут записывать за пределы настроенной папки моделей.
+- Убедитесь, что завершённые загрузки не регистрируются, когда итоговое количество байт не совпадает с ожидаемым размером или отсутствуют метаданные ожидаемого размера/SHA-256.
+- Убедитесь, что удаление импортированной внешней модели удаляет только файлы регистрации приложения.
+- Убедитесь, что удаление загруженной модели, принадлежащей приложению, не может выйти за пределы настроенного корневого каталога моделей.
+- Убедитесь, что настройки моделей с поддержкой зрения сохраняют минимальный/максимальный лимит токенов изображения и запускают `llama-server` с `--image-min-tokens` / `--image-max-tokens`, когда они заданы.
+- Убедитесь, что выбор Vision-проектора для каждой модели сохраняется для автодетекта,
+  встроенного/входящего в модель и явного внешнего проекторов; явные проекторы
+  запускаются с `--mmproj`, а встроенные — без `--mmproj`. Убедитесь, что автопоиск
+  ищет только в папке конкретной модели и не делает вывод о встроенном зрении
+  на основе языкового GGUF с поддержкой зрения.
+- Убедитесь, что выбор MTP-проектора для каждой модели сохраняется отдельно от Vision-проектора,
+  `Spec type = atomic-mtp` запускает совместимые легаси-форки с `--spec-type mtp --mtp-head`, встроенное положительное
+  значение `*.nextn_predict_layers` заставляет `draft-mtp` опускать `--model-draft`, а
+  явно выбранная внешняя черновая модель по-прежнему запускается с
+  `--model-draft`. Убедитесь, что каждый тип черновика выбирает только свою категорию — MTP,
+  DFlash, DSpark, Eagle3 или simple-draft; родительские/дочерние папки и
+  несовместимые по семейству, версии или целевому размеру вспомогательные файлы не выбираются автоматически.
+- Убедитесь, что `Spec type = draft-dspark` запускает DSpark GGUF с
+  `--spec-type draft-dspark --model-draft <path> --spec-draft-n-max 7` на
+  среде выполнения llama.cpp b10164 или новее и сообщает метрики принятия черновика.
+- Убедитесь, что режим GPU `single` передаёт `--split-mode none`, мульти-GPU режимы передают
+  выбранный режим разделения `layer`, `row` или `tensor`, а необязательные ID устройств GPU
+  и пропорции передают `--device` и `--tensor-split`.
+- Убедитесь, что удаление загруженных исходников среды выполнения и результатов сборки не может выйти за пределы настроенной папки сред выполнения.
+- Убедитесь, что сборки из таблицы «Загрузка сред выполнения» всегда удаляют загруженные исходники после успеха. Убедитесь, что операции сборки нижнего уровня удаляют исходники, когда в настройках «Настройки > Среда выполнения > Удалять исходники после сборки» задано `Yes`, и сохраняют их при значении `No`.
+- Убедитесь, что несколько моделей могут загружаться одновременно на разных сохранённых портах моделей, когда позволяет ёмкость оборудования.
+- Убедитесь, что шлюз автозагрузки обслуживает одну общую конечную точку `/v1`, запускает
+  запрошенную модель на её сохранённом прямом порту и проксирует запросы на эту прямую
+  конечную точку.
+- Убедитесь, что политика шлюза «Предпочитать сохранение загруженных моделей» сохраняет существующие
+  сессии и чётко блокирует/предупреждает, когда допуск по VRAM предсказывает, что другая
+  GPU-модель небезопасна.
+- Убедитесь, что политика шлюза «Одна активная модель» выгружает другие прямые сессии
+  до загрузки запрошенной модели.
+- Убедитесь, что путь сборки llama.cpp из исходников только на CPU для Ubuntu/WSL завершается успешно после «Установить инструменты CPU» или завершается рано с ошибкой, если внутри Ubuntu по-прежнему отсутствуют Git/CMake/инструменты компилятора.
+- Убедитесь, что путь сборки llama.cpp из исходников для CUDA Ubuntu/WSL завершается успешно после «Установить CUDA» на поддерживаемом оборудовании NVIDIA или завершается рано с понятной ошибкой драйвера/инструментария.
+- Убедитесь, что путь сборки llama.cpp из исходников для Vulkan Ubuntu/WSL завершается успешно после «Установить Vulkan» на поддерживаемом оборудовании WSL Vulkan или завершается рано с понятной ошибкой драйвера/инструментария.
+- Убедитесь, что запуски/сборки из исходников Intel Arc SYCL для Windows и WSL завершаются рано с понятными сообщениями о требованиях oneAPI/SYCL, когда отсутствуют инструменты или видимость GPU через Level Zero.
+- Убедитесь, что строка пользовательского репозитория сред выполнения позволяет добавить HTTPS-репозиторий, а затем загрузить/проверить/удалить его на странице «Репозитории сред выполнения».
+- Убедитесь, что сборки сред выполнения CUDA завершаются ошибкой до CMake с понятным сообщением, когда в выбранном дистрибутиве WSL отсутствуют `nvcc` или библиотеки времени выполнения `libcudart`/CUDA Toolkit.
+- Убедитесь, что сборки сред выполнения Vulkan завершаются ошибкой до CMake с понятным сообщением, когда недоступны заголовки Vulkan, `glslc`, `vulkaninfo`, `libvulkan.so`, заголовки SPIR-V или видимое в WSL устройство Vulkan.
+- Убедитесь, что в приложении нет специфичной для тестового стенда (harness) страницы конфигурации или настроек.
+- Убедитесь, что проверка обновлений при запуске меняет пункт «Обновления» в левой навигации на «Установить обновление», когда существует более новый релиз GitHub.
+- Убедитесь, что ручная проверка «Проверить наличие обновлений» показывает всплывающее сообщение об отсутствии обновлений, когда версия актуальна, или запрос на установку, когда существует более новый релиз.
+- Убедитесь, что релиз GitHub включает переносимый ZIP-архив и автономный
+  `LlamaCppWindowsManager.exe`, каждый со своим SHA-256-компаньоном. Автономный
+  артефакт обеспечивает обновления из приложения для установок v1.x, v2.0 и v2.1; некорректная контрольная сумма
+  должна блокировать подготовку обновления (staging).
+- Убедитесь, что подписанное установленное приложение отклоняет неподписанное или подписанное другим сертификатом подготовленное обновление.
+- Убедитесь, что завершённое подготовленное обновление перезапускает `LlamaCppWindowsManager.exe` и показывает заметки о релизе GitHub.
+- Убедитесь, что более старая переименованная переносимая установка мигрирует на `LlamaCppWindowsManager.exe` и удаляет устаревший исполняемый файл после завершения работы.
 
-## Latest Local Verification
+## Последняя локальная проверка
 
-Current local check on 2026-08-15:
+Текущая локальная проверка от 2026-08-15:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\test-release-gate.ps1 -IncludePublish -IncludeInstaller
 ```
 
-Result: .NET 10 Release app and CLI builds succeeded with zero warnings;
-service/unit tests passed (`548/548`) and the WPF smoke test passed (`1/1`) with
-no skips; service coverage was 80.9% and model/view-model coverage was 97.4%;
-formatting, diff whitespace, and the vulnerability, deprecation, and
-direct-package currency audit passed. The portable publish and embedded
-operator/control sidecar packaging also succeeded, as did the installer gate.
-The current local portable and installer artifacts remain unsigned test builds.
-The next release notes draft is tracked in
+Результат: сборки приложения и CLI в конфигурации Release под .NET 10 прошли
+без предупреждений; сервисные/модульные тесты пройдены (`548/548`), WPF-смоук-тест
+пройден (`1/1`) без пропусков; покрытие сервисов составило 80,9%, покрытие
+моделей/представлений-моделей — 97,4%; проверки форматирования, пробелов в
+диффах и аудит уязвимостей, устаревших зависимостей и актуальности прямых
+пакетов пройдены. Переносимая публикация и встроенная упаковка
+операторских/управляющих сайдкаров также прошли, как и контроль установщика.
+Текущие локальные переносимые артефакты и артефакты установщика остаются
+неподписанными тестовыми сборками. Черновик заметок следующего релиза ведётся в
 `docs/GITHUB_RELEASE_NEXT.md`.
 
-## Manual Clean-Machine Test
+## Ручной тест на чистой машине
 
-1. Start from a clean Windows VM.
-2. Install `dist\installer\LlamaCppWindowsManager-Setup-2.2.0-win-x64.exe`.
-3. Confirm the installer prefers `D:\LlamaCppWindowsManager` when `D:` exists and allows choosing a different folder before install.
-4. Confirm the launch-after-install option opens the app.
-5. Confirm first launch creates `data\models`, `data\runtimes`, `data\cache`, `data\state`, and `data\logs` beside the exe when the install folder is writable.
-6. Run the installer again and confirm it detects and updates the existing install without deleting `data`.
-7. Uninstall and confirm `data` is kept by default; repeat on a disposable install and choose the explicit delete-data option to confirm data removal.
-8. Copy only `dist\LlamaCppWindowsManager-win-x64\LlamaCppWindowsManager.exe` into a writable portable test folder.
-9. Confirm launching from a non-writable location falls back to `%LocalAppData%\llama.cpp Windows Manager`, reuses `%LocalAppData%\llama.cpp Console` or `%LocalAppData%\LocalLlmConsole` only for an existing legacy folder, or reports a clear workspace error.
-10. Launch the app without Git, CMake, or CUDA.
-11. Verify the app opens, creates state, and explains missing Ubuntu/WSL prerequisites without crashing.
-12. Use Runtime Downloads to install an official prebuilt CPU Windows runtime, then confirm it appears in model launch runtime choices.
-13. On suitable hardware, repeat Runtime Downloads for CUDA, Vulkan, or Intel Arc SYCL Windows/WSL packages.
-14. Use the WSL Linux page to install or detect Ubuntu only when testing WSL runtimes or source builds.
-15. Use Install CPU Tools to install Git, CMake, and build tools inside Ubuntu, then validate CPU-only WSL source-build preflight.
-16. Try a CUDA source build without CUDA Toolkit inside Ubuntu/WSL and confirm the app reports that the WSL CUDA Toolkit is missing before CMake runs.
-17. Try a Vulkan source build without Vulkan tools or a WSL-visible Vulkan device and confirm the app reports the missing Vulkan prerequisite before CMake runs.
-18. Try a SYCL launch/source build without oneAPI or a Level Zero-visible Intel GPU and confirm the app reports the missing Intel Arc prerequisite.
-19. Change the selected distro and validate missing-distro errors.
-20. Download a small GGUF, interrupt the app mid-download, relaunch, and verify job recovery.
-21. Load two small models on different saved ports and confirm both endpoints remain reachable.
-22. Enable Gateway LAN only, confirm a LAN client can reach the gateway but not
-    direct model ports; then enable Direct models LAN only and confirm the
-    inverse.
-23. Import an external model folder, delete the registration, and verify GGUF files remain.
-24. Add a downloaded app-owned model, delete it, and verify only app-owned paths are removed.
-25. Verify `GET /v1/models` lists each saved profile as a separate model id.
-26. Verify app update checks can reach the GitHub release feed, and that update install works from a copied portable exe folder.
+1. Начните с чистой виртуальной машины Windows.
+2. Установите `dist\installer\LlamaCppWindowsManager-Setup-2.2.0-win-x64.exe`.
+3. Убедитесь, что установщик предпочитает `D:\LlamaCppWindowsManager`, когда диск `D:` существует, и позволяет выбрать другую папку до установки.
+4. Убедитесь, что параметр запуска после установки открывает приложение.
+5. Убедитесь, что при первом запуске рядом с exe создаются папки `data\models`, `data\runtimes`, `data\cache`, `data\state` и `data\logs`, если папка установки доступна для записи.
+6. Запустите установщик повторно и убедитесь, что он обнаруживает и обновляет существующую установку без удаления `data`.
+7. Удалите приложение и убедитесь, что `data` сохраняется по умолчанию; повторите на одноразовой установке и выберите явный вариант удаления данных, чтобы подтвердить удаление данных.
+8. Скопируйте только `dist\LlamaCppWindowsManager-win-x64\LlamaCppWindowsManager.exe` в доступную для записи переносимую тестовую папку.
+9. Убедитесь, что запуск из места без прав записи использует запасной путь `%LocalAppData%\llama.cpp Windows Manager`, повторно использует `%LocalAppData%\llama.cpp Console` или `%LocalAppData%\LocalLlmConsole` только при наличии существующей легаси-папки или сообщает о понятной ошибке рабочего пространства.
+10. Запустите приложение без Git, CMake и CUDA.
+11. Проверьте, что приложение открывается, создаёт состояние и объясняет отсутствующие требования Ubuntu/WSL без сбоев.
+12. С помощью «Загрузки сред выполнения» установите официальную готовую среду CPU Windows, затем убедитесь, что она появляется в вариантах среды при запуске модели.
+13. На подходящем оборудовании повторите «Загрузку сред выполнения» для пакетов CUDA, Vulkan или Intel Arc SYCL Windows/WSL.
+14. Используйте страницу WSL Linux для установки или обнаружения Ubuntu только при тестировании сред WSL или сборок из исходников.
+15. Используйте «Установить инструменты CPU» для установки Git, CMake и инструментов сборки внутри Ubuntu, затем проверьте предварительные условия сборки WSL из исходников только на CPU.
+16. Попробуйте сборку из исходников CUDA без CUDA Toolkit внутри Ubuntu/WSL и убедитесь, что приложение сообщает об отсутствии WSL CUDA Toolkit до запуска CMake.
+17. Попробуйте сборку из исходников Vulkan без инструментов Vulkan или видимого в WSL устройства Vulkan и убедитесь, что приложение сообщает об отсутствующем требовании Vulkan до запуска CMake.
+18. Попробуйте запуск/сборку из исходников SYCL без oneAPI или видимого через Level Zero GPU Intel и убедитесь, что приложение сообщает об отсутствующем требовании Intel Arc.
+19. Смените выбранный дистрибутив и проверьте сообщения об ошибках отсутствующего дистрибутива.
+20. Загрузите небольшой GGUF, прервите приложение в середине загрузки, перезапустите и проверьте восстановление задания.
+21. Загрузите две небольшие модели на разных сохранённых портах и убедитесь, что обе конечные точки остаются доступными.
+22. Включите только «Шлюз LAN» и убедитесь, что LAN-клиент может получить доступ к шлюзу, но не
+    к прямым портам моделей; затем включите только «Прямые модели LAN» и убедитесь в
+    обратном.
+23. Импортируйте папку внешней модели, удалите регистрацию и проверьте, что файлы GGUF остались.
+24. Добавьте загруженную модель, принадлежащую приложению, удалите её и проверьте, что удаляются только пути, принадлежащие приложению.
+25. Проверьте, что `GET /v1/models` перечисляет каждый сохранённый профиль как отдельный ID модели.
+26. Проверьте, что проверка обновлений приложения может достичь канала релизов GitHub и что установка обновления работает из скопированной переносимой папки с exe.
 
-## Release Blockers
+## Блокирующие факторы релиза
 
-- Any unauthenticated mutating localhost API.
-- Any wildcard CORS header on a local control API.
-- Any recursive delete not bounded by ownership and path-root checks.
-- Any llama.cpp launch default that binds model serving to `0.0.0.0`.
-- Any model-serving mode that does not require an API key.
-- Any completed download registered without expected-size or SHA-256 validation.
-- Any clean-machine startup path that silently assumes hidden developer setup.
-- Any release artifact described as signed or trusted when it is unsigned.
-- Any signed install that can be replaced by an unsigned or differently signed update.
-- Any installer uninstall, repair, or update path that deletes models, runtimes, logs, cache, or state without explicit user confirmation.
+- Любой неаутентифицированный изменяющий состояние API на localhost.
+- Любой CORS-заголовок с подстановочным знаком на локальном управляющем API.
+- Любое рекурсивное удаление, не ограниченное проверками владения и корневого пути.
+- Любой параметр запуска llama.cpp по умолчанию, привязывающий обслуживание моделей к `0.0.0.0`.
+- Любой режим обслуживания моделей без обязательного API-ключа.
+- Любая завершённая загрузка, зарегистрированная без проверки ожидаемого размера или SHA-256.
+- Любой путь запуска на чистой машине, молча предполагающий скрытую настройку разработчика.
+- Любой артефакт релиза, описанный как подписанный или доверенный, будучи неподписанным.
+- Любая подписанная установка, которую можно заменить неподписанным или подписанным иначе обновлением.
+- Любой путь удаления, восстановления или обновления установщика, удаляющий модели, среды выполнения, журналы, кэш или состояние без явного подтверждения пользователя.

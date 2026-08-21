@@ -1,83 +1,77 @@
-# Schema-driven launch settings
+# Настройки запуска на основе схемы
 
-Last reviewed: 2026-08-15
+Последняя проверка: 2026-08-15
 
-## Goal
+## Цель
 
-Render the existing polished launch form and additional runtime-supported settings through one extensible pipeline without making runtime help text the source of application policy.
+Отображать существующую отполированную форму запуска и дополнительные настройки, поддерживаемые средой выполнения, через единый расширяемый конвейер, не делая текст справки среды выполнения источником политики приложения.
 
-The implementation deliberately separates four concerns:
+Реализация намеренно разделяет четыре аспекта:
 
-1. **UI schema** — labels, sections, editor types, choices, picker behavior, and advanced visibility.
-2. **Launch projection** — conversion from `AppSettings` to `RuntimeLaunchRequest` and then to argument tokens.
-3. **Runtime capabilities** — options advertised by the selected executable's `--help` output.
-4. **Safety policy** — flags owned by the application or unsafe to expose as generic launch fields.
+1. **Схема интерфейса** — подписи, разделы, типы редакторов, варианты выбора, поведение средств выбора и видимость в расширенном режиме.
+2. **Проекция запуска** — преобразование из `AppSettings` в `RuntimeLaunchRequest`, а затем в токены аргументов.
+3. **Возможности среды выполнения** — параметры, рекламируемые выводом `--help` выбранного исполняемого файла.
+4. **Политика безопасности** — флаги, принадлежащие приложению или небезопасные для раскрытия как общие поля запуска.
 
-## Rendering flow
+## Поток отрисовки
 
-`LaunchSettingUiSchema` is the curated schema for settings that need application-level polish or composite behavior. `LaunchSettingsPanelFactory` iterates this schema and creates text fields, dropdowns, and the existing model/head file pickers. The form binder continues to own parsing and cross-field validation, so the migration does not change existing values or validation rules.
+`LaunchSettingUiSchema` — это курируемая схема для настроек, которым требуется полировка на уровне приложения или составное поведение. `LaunchSettingsPanelFactory` перебирает эту схему и создаёт текстовые поля, раскрывающиеся списки и существующие средства выбора файлов модели/головы. Биндер формы по-прежнему отвечает за разбор и межполевую валидацию, поэтому миграция не меняет существующие значения или правила валидации.
 
-After a runtime is selected:
+После выбора среды выполнения:
 
-1. The previous runtime's structured values are first materialized back into `CustomParameters`, and its controls are cleared immediately so stale settings are never presented as belonging to the new runtime.
-2. `RuntimeLaunchOptionDiscoveryService` invokes that exact executable with `--help`.
-3. Native and WSL runtimes are handled separately; stdout and stderr are always combined.
-4. `RuntimeLaunchHelpParser` preserves every advertised alias and infers switch, choice, text, file, or directory semantics. It parses only the declaration column as aliases, joins wrapped descriptions, treats bracketed/explicit enumerations as choices, and keeps descriptive default/disabled/range text as a free-form value instead of inventing duplicate choices.
-5. `RuntimeLaunchOptionPolicy` removes application-managed, credential-bearing, network/security, utility/action, removed, deprecated, and model-replacement flags.
-6. `RuntimeLaunchOptionGroupingService` classifies the safe remainder into stable, ordered sections such as Performance & Memory, Context & Model Behavior, Generation & Sampling, Speculative & Draft, Vision & Multimodal, Server & Slots, and Diagnostics & Output. Unrecognized flags remain visible under Other Runtime Options.
-7. `LaunchRuntimeOptionsPanel` renders those groups only in Advanced mode, using the same 28px editors, compact label proportions, visual section language, and two-column field rhythm as the curated form. Raw flags are converted to readable display labels while the exact advertised long alias remains in the tooltip, search index, persistence, and emitted command. Options without an advertised default render a blank text/choice value instead of generic placeholder copy. Choice controls distinguish inheritance (`Inherit (runtime default: X)`) from explicitly setting the same raw value. Discovered positive/negative switch pairs become one tri-state Default/Enabled/Disabled control: Default emits nothing, while Enabled or Disabled emits only the corresponding alias actually advertised by the runtime. Unpaired switches expose only their supported direction. Search results reflow across the two columns so filtered groups do not retain empty cells.
+1. Структурированные значения предыдущей среды выполнения сначала материализуются обратно в `CustomParameters`, а её элементы управления немедленно очищаются, чтобы устаревшие настройки никогда не представлялись как принадлежащие новой среде выполнения.
+2. `RuntimeLaunchOptionDiscoveryService` вызывает именно этот исполняемый файл с `--help`.
+3. Нативные и WSL-среды обрабатываются отдельно; stdout и stderr всегда объединяются.
+4. `RuntimeLaunchHelpParser` сохраняет каждый рекламируемый псевдоним и выводит семантику переключателя, варианта выбора, текста, файла или каталога. Он разбирает как псевдонимы только колонку объявления, объединяет перенесённые описания, рассматривает заключённые в скобки/явные перечисления как варианты выбора и сохраняет описательный текст по умолчанию/отключения/диапазона как свободное значение, вместо того чтобы выдумывать дублирующиеся варианты.
+5. `RuntimeLaunchOptionPolicy` удаляет флаги, управляемые приложением, содержащие учётные данные, сетевые/защитные, утилитарные/действенные, удалённые, устаревшие и заменяющие модель.
+6. `RuntimeLaunchOptionGroupingService` классифицирует безопасный остаток по стабильным упорядоченным разделам, таким как «Производительность и память», «Контекст и поведение модели», «Генерация и сэмплирование», «Спекулятивные и драфт-модели», «Vision и мультимодальность», «Сервер и слоты» и «Диагностика и вывод». Нераспознанные флаги остаются видимыми в разделе «Прочие параметры среды выполнения».
+7. `LaunchRuntimeOptionsPanel` отображает эти группы только в расширенном режиме, используя те же редакторы высотой 28px, компактные пропорции подписей, визуальный язык разделов и ритм двухколоночных полей, что и курируемая форма. Сырые флаги преобразуются в читаемые отображаемые подписи, при этом точный рекламируемый длинный псевдоним остаётся в подсказке, поисковом индексе, персистентности и формируемой команде. Параметры без рекламируемого значения по умолчанию отображают пустое текстовое значение/вариант вместо общего текста-заглушки. Элементы выбора различают наследование (`Inherit (runtime default: X)`) и явную установку того же сырого значения. Обнаруженные пары положительных/отрицательных переключателей становятся одним трёхпозиционным элементом «По умолчанию/Включено/Отключено»: «По умолчанию» ничего не выдаёт, а «Включено» или «Отключено» выдаёт только соответствующий псевдоним, реально рекламируемый средой выполнения. Непарные переключатели предоставляют только поддерживаемое направление. Результаты поиска перетекают через обе колонки, поэтому отфильтрованные группы не сохраняют пустые ячейки.
 
-Discovery is generation-safe: each selector change captures the newly selected runtime, cancels the previous scan, and accepts a result only while that runtime is still selected. Loading and discovery errors remain available in Advanced mode; the successful form does not add a redundant discovered-setting count.
+Обнаружение безопасно по поколениям: каждое изменение селектора фиксирует вновь выбранную среду выполнения, отменяет предыдущее сканирование и принимает результат, только пока эта среда всё ещё выбрана. Ошибки загрузки и обнаружения остаются доступными в расширенном режиме; успешная форма не добавляет избыточный счётчик обнаруженных настроек.
 
-Native discovery is cached by runtime identity, executable path, and file modification time. WSL discovery is repeated because a reliable remote executable timestamp is not available locally.
+Нативное обнаружение кэшируется по идентичности среды выполнения, пути к исполняемому файлу и времени изменения файла. Обнаружение WSL повторяется, поскольку надёжная временная метка удалённого исполняемого файла локально недоступна.
 
-## Discovery diagnostics
+## Диагностика обнаружения
 
-Each discovery attempt writes a compact JSON record under `diagnostics/runtime-options` in the app workspace. The record contains the selected runtime identity, executable fingerprint, help exit code, first non-empty banner line, a SHA-256 fingerprint of the help output, parse/render counts, and a stable status such as `success`, `empty-help`, or `unrecognized-help`.
+Каждая попытка обнаружения записывает компактную JSON-запись в `diagnostics/runtime-options` в рабочей области приложения. Запись содержит идентичность выбранной среды выполнения, отпечаток исполняемого файла, код выхода справки, первую непустую строку баннера, SHA-256-отпечаток вывода справки, количество разобранных/отрисованных элементов и стабильный статус, такой как `success`, `empty-help` или `unrecognized-help`.
 
-The full help output is deliberately not persisted. This keeps diagnostics useful for identifying runtime-help format changes without turning the diagnostic folder into a copy of arbitrary process output.
+Полный вывод справки намеренно не сохраняется. Это сохраняет полезность диагностики для выявления изменений формата справки среды выполнения, не превращая папку диагностики в копию произвольного вывода процессов.
 
-## Persistence and import
+## Персистентность и импорт
 
-Additional structured values serialize into the existing `CustomParameters` profile field. This keeps global defaults, per-model profiles, and existing databases backward compatible.
+Дополнительные структурированные значения сериализуются в существующее поле профиля `CustomParameters`. Это сохраняет обратную совместимость глобальных значений по умолчанию, профилей по моделям и существующих баз данных.
 
-On profile load, known tokens hydrate their structured runtime editors and unknown tokens remain in the raw fallback field. When the selected runtime changes, structured values are materialized before the old editor set is removed, so settings are not lost. Unsupported aliases remain raw rather than being silently rewritten.
+При загрузке профиля известные токены наполняют свои структурированные редакторы среды выполнения, а неизвестные токены остаются в резервном сыром поле. Когда выбранная среда выполнения меняется, структурированные значения материализуются до удаления старого набора редакторов, поэтому настройки не теряются. Неподдерживаемые псевдонимы остаются сырыми, а не молча переписываются.
 
-The Runtime Command panel remains visible in Basic and Advanced modes. Its generated portion is editable only as a staging surface: users append one or more flags and select **Apply added flags**. The app rejects changes to the generated prefix, validates the appended tokens against the application-owned argument policy, hydrates matching discovered controls, and preserves safe unknown tokens in **Custom params**.
+Панель команды среды выполнения остаётся видимой в базовом и расширенном режимах. Её сгенерированная часть редактируема только как промежуточная поверхность: пользователи добавляют один или несколько флагов и выбирают **Применить добавленные флаги**. Приложение отклоняет изменения сгенерированного префикса, проверяет добавленные токены по политике аргументов, принадлежащей приложению, наполняет соответствующие обнаруженные элементы управления и сохраняет безопасные неизвестные токены в **Пользовательских параметрах**.
 
-## Launch parity
+## Паритет запуска
 
-`RuntimeLaunchRequestFactory` is shared by real launches and previews. `RuntimeAdapter.BuildArgs` remains the single token-emission implementation. The preview substitutes placeholders for the model and secret validation only; it does not display the API key, which continues to be passed through `LLAMA_API_KEY`.
+`RuntimeLaunchRequestFactory` используется совместно реальными запусками и предпросмотрами. `RuntimeAdapter.BuildArgs` остаётся единственной реализацией формирования токенов. Предпросмотр подставляет заполнители только для модели и проверки секретов; он не отображает ключ API, который по-прежнему передаётся через `LLAMA_API_KEY`.
 
-Custom arguments are validated before application-owned arguments such as metrics are appended. Model, host, port, credentials, curated performance fields, and other managed flags cannot be overridden through raw parameters.
+Пользовательские аргументы проверяются до добавления аргументов, принадлежащих приложению, таких как метрики. Модель, хост, порт, учётные данные, курируемые поля производительности и другие управляемые флаги не могут быть переопределены через сырые параметры.
 
-## Adding a polished setting
+## Добавление полированной настройки
 
-1. Add the persistent value to `AppSettings` and, when model-specific, `ModelLaunchSettings`.
-2. Add a `LaunchSettingUiDefinition` to `LaunchSettingUiSchema` with the appropriate section and editor metadata.
-3. Add binder parsing, application, and cross-field validation when the value is not a plain string.
-4. Add the command projection to `RuntimeAdapter` and mark every owned alias in `RuntimeLaunchOptionPolicy`.
-5. Add round-trip, validation, and argument-emission tests.
+1. Добавьте сохраняемое значение в `AppSettings` и, если оно специфично для модели, в `ModelLaunchSettings`.
+2. Добавьте `LaunchSettingUiDefinition` в `LaunchSettingUiSchema` с соответствующим разделом и метаданными редактора.
+3. Добавьте разбор биндером, применение и межполевую валидацию, если значение не является простой строкой.
+4. Добавьте проекцию команды в `RuntimeAdapter` и отметьте каждый принадлежащий псевдоним в `RuntimeLaunchOptionPolicy`.
+5. Добавьте тесты обратного цикла (round-trip), валидации и формирования аргументов.
 
-Settings discovered at runtime require none of these steps unless they need richer validation or composite behavior than help metadata can express.
+Настройки, обнаруженные во время выполнения, не требуют ни одного из этих шагов, если только им не нужна более богатая валидация или составное поведение, чем может выразить метаданные справки.
 
-App-shell preferences such as the `showOverview*` and `showModelsHuggingFace`
-fields do not belong in
-this launch schema or in `ModelLaunchSettings`: they do not affect
-`llama-server` arguments and must not create profile variants. Implement those
-through `SettingsPageDefinitionService`, `AppSettingsUpdateService`, explicit
-`StateStore.Settings` key mappings, and the owning WPF page state. See
-`docs/DEVELOPMENT.md` for the complete app-level UI preference checklist.
+Параметры оболочки приложения, такие как поля `showOverview*` и `showModelsHuggingFace`, не относятся к этой схеме запуска и к `ModelLaunchSettings`: они не влияют на аргументы `llama-server` и не должны создавать варианты профилей. Реализуйте их через `SettingsPageDefinitionService`, `AppSettingsUpdateService`, явные сопоставления ключей `StateStore.Settings` и состояние соответствующей страницы WPF. Полный чек-лист UI-параметров уровня приложения см. в `docs/DEVELOPMENT.md`.
 
-## Verification
+## Проверка
 
-Tests cover:
+Тесты охватывают:
 
-- exact alias preservation and choice inference;
-- deterministic runtime-option grouping with a lossless fallback;
-- readable runtime-option labels with exact raw-flag search and emission;
-- safe/app-managed filtering;
-- rejection of model, port, and credential overrides;
-- shared preview/launch argument generation;
-- curated schema validity and uniqueness;
-- the existing application architecture and full regression suite.
+- точное сохранение псевдонимов и вывод вариантов выбора;
+- детерминированную группировку параметров среды выполнения с запасным вариантом без потерь;
+- читаемые подписи параметров среды выполнения с точным поиском и выдачей сырых флагов;
+- безопасную фильтрацию, управляемую приложением;
+- отклонение переопределений модели, порта и учётных данных;
+- общую генерацию аргументов предпросмотра/запуска;
+- валидность и уникальность курируемой схемы;
+- существующую архитектуру приложения и полный набор регрессионных тестов.

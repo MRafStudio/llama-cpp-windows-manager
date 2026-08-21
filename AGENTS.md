@@ -1,61 +1,61 @@
-# llama.cpp Windows Manager operator instructions
+# Инструкции оператора llama.cpp Windows Manager
 
-## Purpose
+## Назначение
 
-llama.cpp Windows Manager is a Windows WPF application that owns its workspace,
-SQLite state, runtime/model inventory, downloads, supervised `llama-server`
-sessions, OpenAI-compatible gateway, logs, and live metrics.
+llama.cpp Windows Manager — это Windows-приложение WPF, которое владеет своим рабочим пространством (workspace),
+состоянием SQLite, инвентарём runtime и моделей, загрузками, контролируемыми
+сеансами `llama-server`, OpenAI-совместимым gateway, журналами и живыми метриками.
 
-`llwmctl` is the supported automation interface. It talks to the authenticated
-loopback control API inside the running Manager, so successful commands update
-the real application state and appear in the UI.
+`llwmctl` — поддерживаемый интерфейс автоматизации. Он взаимодействует с аутентифицированным
+loopback API управления внутри запущенного Manager, поэтому успешные команды обновляют
+реальное состояние приложения и отображаются в UI.
 
-## Non-negotiable rules
+## Обязательные правила
 
-- Use `llwmctl` for live Manager operations. Do not edit the SQLite database,
-  expose the control API, or automate WPF controls. Do not launch `llama-server`
-  directly.
-- Start every operational task with `llwmctl status`.
-- Run `llwmctl capabilities` and `llwmctl operations list` before using an
-  unfamiliar field or action. The live schemas are authoritative.
-- Run `llwmctl self` before work that can unload, restart, replace, update, or
-  otherwise affect a loaded model.
-- Treat a nonzero CLI exit code or JSON response with `"ok": false` as failure.
-  Preserve and report the returned error.
-- Never use `--confirm` or `--allow-self-stop` unless the user explicitly
-  authorized the stated consequence.
+- Используйте `llwmctl` для операций с живым Manager. Не редактируйте базу данных SQLite,
+  не открывайте API управления и не автоматизируйте элементы управления WPF. Не запускайте `llama-server`
+  напрямую.
+- Начинайте каждую операционную задачу с `llwmctl status`.
+- Запускайте `llwmctl capabilities` и `llwmctl operations list` перед использованием
+  незнакомого поля или действия. Живые схемы (live schemas) являются авторитетными.
+- Запускайте `llwmctl self` перед работой, которая может выгрузить, перезапустить, заменить,
+  обновить или иным образом затронуть загруженную модель.
+- Считайте ненулевой код выхода CLI или JSON-ответ с `"ok": false` признаком сбоя.
+  Сохраняйте и сообщайте возвращённую ошибку.
+- Никогда не используйте `--confirm` или `--allow-self-stop`, если пользователь явно
+  не санкционировал заявленное последствие.
 
-## Choose the correct CLI and workspace
+## Выбор правильного CLI и рабочего пространства
 
-Beside an installed or portable application, use the matching executable:
+Рядом с установленным или переносимым приложением используйте соответствующий исполняемый файл:
 
 ```powershell
 ./llwmctl.exe status
 ```
 
-From the source repository, use a built CLI on `PATH` or:
+Из исходного репозитория используйте собранный CLI, находящийся на `PATH`, или:
 
 ```powershell
 dotnet run --project src/LocalLlmConsole.ControlCli/LocalLlmConsole.ControlCli.csproj -- status
 ```
 
-If discovery is ambiguous, specify the workspace or discovery file:
+Если обнаружение неоднозначно, укажите рабочее пространство или файл обнаружения:
 
 ```powershell
 llwmctl status --workspace <workspace>
 llwmctl status --connection <workspace>\state\control.json
 ```
 
-A writable portable installation normally uses `<application-folder>\data`.
-Never read, print, copy, or manually decrypt the control token.
+Записываемая переносимая установка обычно использует `<application-folder>\data`.
+Никогда не читайте, не выводите, не копируйте и не расшифровывайте вручную контрольный токен.
 
-If no Manager is available and the user asked to start or operate it, launch
-`LlamaCppWindowsManager.exe` normally and visibly, then retry `status`. The app
-is single-instance per Windows user session; do not start a second Manager.
+Если Manager недоступен, а пользователь попросил запустить его или управлять им, запустите
+`LlamaCppWindowsManager.exe` обычным и видимым образом, затем повторите `status`. Приложение
+является однокопийным (single-instance) в рамках сеанса пользователя Windows; не запускайте второй Manager.
 
-## First contact and cold start
+## Первый контакт и холодный старт
 
-Run these commands before choosing model, runtime, profile, or session IDs:
+Выполните эти команды перед выбором идентификаторов модели, runtime, профиля или сеанса:
 
 ```powershell
 llwmctl status
@@ -67,49 +67,48 @@ llwmctl runtimes list
 llwmctl sessions list
 ```
 
-Use `profiles list --model <model>` for saved variants. When `self` is
-ambiguous, retry with `--endpoint`, `--model`, `--session`, `--port`, or process
-hints; never guess from the UI selection.
+Используйте `profiles list --model <model>` для сохранённых вариантов. Когда `self`
+неоднозначен, повторите с подсказками `--endpoint`, `--model`, `--session`, `--port` или процесса;
+никогда не угадывайте по выбору в UI.
 
-## Load, restart, and unload models
+## Загрузка, перезапуск и выгрузка моделей
 
-Prefer a saved profile and wait for endpoint readiness:
+Предпочитайте сохранённый профиль и ждите готовности endpoint:
 
 ```powershell
 llwmctl load <model> --profile <profile> --wait
 ```
 
-Repeated `--set name=value` options are one-shot overrides. Persist them only
-when requested with `--save-profile=<name>` or the profile commands. Obtain the
-complete setting names and accepted values from `capabilities`.
+Повторяющиеся параметры `--set name=value` являются разовыми переопределениями. Сохраняйте их только
+по запросу через `--save-profile=<name>` или команды профилей. Полные имена настроек и принимаемые
+значения получайте из `capabilities`.
 
-Before any restart or unload, identify the current model with `self`. Never
-stop the session serving the current operation unless the user explicitly asks
-for that consequence and accepts that the response may terminate. Only then may
-`--allow-self-stop` be used. Do not use `--unload-others` while identity is
-unknown.
+Перед любым перезапуском или выгрузкой определите текущую модель с помощью `self`. Никогда
+не останавливайте сеанс, обслуживающий текущую операцию, если пользователь явно не попросил
+об этом последствии и не принял, что ответ может оборваться. Только тогда можно
+использовать `--allow-self-stop`. Не используйте `--unload-others`, пока идентичность
+неизвестна.
 
-## Companions and launch profiles
+## Компаньоны и профили запуска
 
-Inspect compatible helpers before selecting vision, draft, or MTP files:
+Проверьте совместимые вспомогательные файлы перед выбором файлов vision, draft или MTP:
 
 ```powershell
 llwmctl models companions <model>
 ```
 
-Automatic discovery is restricted to the model's exact folder. Explicit
-compatible paths may be elsewhere. Profile fields are
-`visionProjectorPath`, `specDraftModelPath`, `mtpHeadPath`, and
-`speculativeType`.
+Автоматическое обнаружение ограничено точной папкой модели. Явно совместимые пути могут
+находиться в другом месте. Поля профиля: `visionProjectorPath`, `specDraftModelPath`,
+`mtpHeadPath` и `speculativeType`.
 
-For upstream `draft-mtp`, leave `specDraftModelPath` empty when the main GGUF
-reports `embeddedDraftMtp: true`; the Manager then uses embedded NextN/MTP
-tensors. Use `visionProjectorPath=embedded` only when the selected runtime and
-model package explicitly support an embedded multimodal projector.
+Для восходящего `draft-mtp` оставляйте `specDraftModelPath` пустым, когда основной GGUF
+сообщает `embeddedDraftMtp: true`; тогда Manager использует встроенные тензоры NextN/MTP.
+Используйте `visionProjectorPath=embedded` только когда выбранные runtime и пакет модели
+явно поддерживают встроенный мультимодальный проектор.
 
-## Model groups and retention
+## Группы моделей и удержание (retention)
 
-Groups are assigned to launch profiles, not directly to model records:
+Группы назначаются профилям запуска, а не напрямую записям моделей:
 
 ```powershell
 llwmctl groups list
@@ -119,14 +118,14 @@ llwmctl groups assign <model> <profile> --group "Batch"
 llwmctl groups unassign <model> <profile>
 ```
 
-Valid retention modes are `inherit`, `pinned`, and `idle-timeout`; priorities
-are `low`, `normal`, and `high`. A group load preflights duplicate model
-assignments, runtimes, ports, and aggregate VRAM before starting anything.
-Retention affects automatic idle unload, not inference scheduling. Explicit
-lifecycle operations and the gateway's Single active policy still take
-precedence.
+Допустимые режимы удержания: `inherit`, `pinned` и `idle-timeout`; приоритеты: `low`,
+`normal` и `high`. Загрузка группы выполняет предварительную проверку дублирующихся
+назначений моделей, runtimes, портов и суммарной VRAM перед запуском чего-либо.
+Удержание влияет на автоматическую выгрузку по бездействию, а не на планирование вывода.
+Явные операции жизненного цикла и политика gateway «Single active» по-прежнему
+имеют приоритет.
 
-## Observe sessions, logs, and downloads
+## Наблюдение за сеансами, журналами и загрузками
 
 ```powershell
 llwmctl sessions inspect <session>
@@ -140,74 +139,74 @@ llwmctl hf download --repo <owner/repo> --file <path.gguf>
 llwmctl jobs list
 ```
 
-Pause, resume, or cancel a model download with `jobs pause|resume|cancel
+Приостановите, возобновите или отмените загрузку модели с помощью `jobs pause|resume|cancel
 <job-id>`.
 
-Runtime source work must follow the staged operation flow: run
-`runtime-source.check`, then `runtime-source.download`, then
-`runtime-build.start` with the downloaded source returned by `runtime.catalog`.
-Use `operations run <name> --dry-run --set name=value` before consequential
-operations.
+Работа с исходным кодом runtime должна следовать поэтапному потоку операций: выполните
+`runtime-source.check`, затем `runtime-source.download`, затем `runtime-build.start`
+с загруженным исходным кодом, возвращённым `runtime.catalog`. Используйте
+`operations run <name> --dry-run --set name=value` перед операциями
+с последствиями.
 
-## Application settings and UI visibility
+## Настройки приложения и видимость в UI
 
-Patch settings through the running Manager, never its database:
+Применяйте настройки через запущенный Manager, а не через его базу данных:
 
 ```powershell
 llwmctl settings set --set showOverviewHardware=false --set showModelsHuggingFace=true
 llwmctl settings get
 ```
 
-The presentation fields are `showOverviewModelStatus`,
+Поля представления: `showOverviewModelStatus`,
 `showOverviewHardware`, `showOverviewSlots`, `showOverviewTokens`,
 `showOverviewMtpTokens`, `showOverviewKvCache`,
-`showOverviewLiveRuntimeLog`, `showOverviewAllMetrics`, and
-`showModelsHuggingFace`. They apply automatically and do not disable the
-underlying telemetry, logs, or downloads.
+`showOverviewLiveRuntimeLog`, `showOverviewAllMetrics` и
+`showModelsHuggingFace`. Они применяются автоматически и не отключают
+базовую телеметрию, журналы или загрузки.
 
-## Consequential operations
+## Операции с последствиями
 
-The complete action registry includes runtime install/build/delete, Windows and
-WSL setup, cache/log/history maintenance, gateway control, updates, navigation,
-refresh, and shutdown.
+Полный реестр действий включает установку/сборку/удаление runtime, настройку Windows
+и WSL, обслуживание кэша/журналов/истории, управление gateway, обновления, навигацию,
+обновление (refresh) и завершение работы.
 
 ```powershell
 llwmctl operations run <operation> --dry-run --set name=value
 llwmctl operations run <operation> --confirm --set name=value
 ```
 
-Use `--confirm` only for an operation whose live schema marks
-`requiresConfirmation` and whose consequence the user authorized. Model deletion
-also requires explicit intent and `models delete <model> --confirm`. App-owned
-model deletion removes its managed folder; imported models are registration-only
-by default.
+Используйте `--confirm` только для операции, живая схема которой помечает
+`requiresConfirmation` и последствие которой санкционировал пользователь. Удаление модели
+также требует явного намерения и `models delete <model> --confirm`. Удаление модели,
+принадлежащей приложению, удаляет её управляемую папку; импортированные модели
+по умолчанию только регистрируются (registration-only).
 
-## Restart and recovery
+## Перезапуск и восстановление
 
-Before an authorized update, shutdown, runtime deletion, or self-stop, collect
-`status`, `self`, `sessions list`, and the relevant effective profile/settings.
-Report the state and recovery command before issuing the stopping action. Treat
-a self-stopping command as the final action unless an independent controller can
-observe the restart.
+Перед санкционированным обновлением, завершением работы, удалением runtime или
+самоостановкой соберите `status`, `self`, `sessions list` и соответствующие действующие
+профиль/настройки. Сообщите состояние и команду восстановления перед выдачей
+останавливающего действия. Считайте самоостанавливающую команду финальным действием,
+если только независимый контроллер не может наблюдать перезапуск.
 
-After restart, re-read the restored `AGENTS.md`, then run `status`,
-`capabilities`, `operations list`, and `self`. Compare sessions and profiles with
-the pre-restart snapshot. Reload only the sessions included in the request.
+После перезапуска перечитайте восстановленный `AGENTS.md`, затем выполните `status`,
+`capabilities`, `operations list` и `self`. Сравните сеансы и профили со снимком
+до перезапуска. Перезагружайте только сеансы, включённые в запрос.
 
-Release builds embed and restore the matching `llwmctl.exe`, this file,
-`agent.md`, and `docs/CONTROL_API.md`. To verify those sidecars without opening
-the UI:
+Сборки release встраивают и восстанавливают соответствующий `llwmctl.exe`, этот файл,
+`agent.md` и `docs/CONTROL_API.md`. Чтобы проверить эти сопутствующие файлы
+без открытия UI:
 
 ```powershell
 LlamaCppWindowsManager.exe --bootstrap-agent-sidecars-only
 ```
 
-## Working from GitHub or source
+## Работа из GitHub или из исходного кода
 
-For end-user installation, prefer the installer or portable ZIP from
+Для установки конечным пользователем предпочитайте установщик или переносимый ZIP из
 [GitHub Releases](https://github.com/MRafStudio/llama-cpp-windows-manager/releases/latest)
-and verify its matching `.sha256` file. Do not describe an unsigned artifact as
-trusted or signed.
+и проверяйте соответствующий файл `.sha256`. Не описывайте неподписанный артефакт
+как доверенный или подписанный.
 
 ```powershell
 $asset = "LlamaCppWindowsManager-win-x64.zip"
@@ -216,22 +215,22 @@ $actual = (Get-FileHash $asset -Algorithm SHA256).Hash
 if ($actual -ne $expected) { throw "Release checksum mismatch: $asset" }
 ```
 
-The canonical source repository is
+Канонический исходный репозиторий —
 [github.com/MRafStudio/llama-cpp-windows-manager](https://github.com/MRafStudio/llama-cpp-windows-manager).
 
-For repository changes, read `docs/DEVELOPMENT.md` and, for architectural work,
-`docs/ARCHITECTURE.md`. Preserve existing worktree changes and generated-data
-boundaries. Run tests proportional to the change and the full gate for control,
-architecture, packaging, or release work:
+Для изменений в репозитории прочитайте `docs/DEVELOPMENT.md`, а для архитектурной
+работы — `docs/ARCHITECTURE.md`. Сохраняйте существующие изменения рабочего дерева
+и границы сгенерированных данных. Запускайте тесты, соразмерные изменению, а для работы
+над управлением, архитектурой, упаковкой или release — полный шлюз (full gate):
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-app.ps1 -Restore
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\test-release-gate.ps1
 ```
 
-Before launching a source build, check `llwmctl status`; it cannot run beside a
-production Manager in the same user session. Use an isolated ignored workspace,
-never production data:
+Перед запуском сборки из исходников проверьте `llwmctl status`; она не может работать
+рядом с production Manager в том же сеансе пользователя. Используйте изолированное
+игнорируемое рабочее пространство, никогда не production-данные:
 
 ```powershell
 $developmentWorkspace = Join-Path $PWD "workspace/development"
@@ -239,18 +238,18 @@ $env:LLAMA_CPP_WINDOWS_MANAGER_WORKSPACE = $developmentWorkspace
 Start-Process -FilePath .\src\LocalLlmConsole.App\bin\Release\net10.0-windows\win-x64\LlamaCppWindowsManager.exe -WorkingDirectory $PWD
 ```
 
-Local builds and packages are unsigned unless signing is explicitly configured.
-Do not overwrite or restart a running production installation merely to test a
-source change.
+Локальные сборки и пакеты не подписаны, если подпись явно не настроена.
+Не перезаписывайте и не перезапускайте работающую production-установку только ради
+проверки изменения исходников.
 
-## Troubleshooting
+## Устранение неполадок
 
-- Run `llwmctl help` for syntax and inspect the live schemas instead of guessing.
-- On command failure, keep the returned JSON and exit code, then inspect
-  `logs list`, `logs tail`, or the relevant session log.
-- For Windows/WSL setup, distinguish **Started** from completed installation and
-  verify the corresponding status operation afterward.
-- For version disagreement, use the `llwmctl.exe` restored beside that exact
-  application executable.
-- See [docs/CONTROL_API.md](docs/CONTROL_API.md) for request contracts and route
-  details.
+- Запустите `llwmctl help` для синтаксиса и проверяйте живые схемы вместо предположений.
+- При сбое команды сохраните возвращённый JSON и код выхода, затем проверьте
+  `logs list`, `logs tail` или соответствующий журнал сеанса.
+- Для настройки Windows/WSL различайте статус **Started** (запущено) и завершённую
+  установку и проверяйте соответствующую операцию статуса после этого.
+- При расхождении версий используйте `llwmctl.exe`, восстановленный рядом с этим
+  конкретным исполняемым файлом приложения.
+- См. [docs/CONTROL_API.md](docs/CONTROL_API.md) для контрактов запросов и деталей
+  маршрутов.

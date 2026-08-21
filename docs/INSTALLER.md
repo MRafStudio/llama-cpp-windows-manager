@@ -1,53 +1,52 @@
-# Windows Installer
+# Установщик Windows
 
-Last reviewed: 2026-08-15
+Последняя проверка: 2026-08-15
 
-The installer is built with Inno Setup 6 from the self-contained `win-x64` publish output.
+Установщик собирается с помощью Inno Setup 6 из самодостаточного (self-contained) результата публикации `win-x64`.
 
-## Build
+## Сборка
 
-Install Inno Setup 6, make sure `ISCC.exe` is on `PATH`, or set:
+Установите Inno Setup 6, убедитесь, что `ISCC.exe` находится в `PATH`, или задайте:
 
 ```powershell
 $env:LLAMA_CPP_WINDOWS_MANAGER_INNO_SETUP = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
 ```
 
-The legacy `LLAMA_CPP_CONSOLE_INNO_SETUP` variable is still accepted.
+Устаревшая переменная `LLAMA_CPP_CONSOLE_INNO_SETUP` по-прежнему принимается.
 
-Then run:
+Затем выполните:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1
 ```
 
-For a public build, sign the app and installer:
+Для публичной сборки подпишите приложение и установщик:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1 -CertificateThumbprint "<cert-thumbprint>" -RequireSigned
 ```
 
-The setup executable is written to:
+Исполняемый файл установки записывается в:
 
 ```text
 dist\installer\LlamaCppWindowsManager-Setup-2.2.0-win-x64.exe
 ```
 
-## Install Behavior
+## Поведение при установке
 
-- Fresh installs prefer `D:\LlamaCppWindowsManager` when the `D:` drive exists.
-- If `D:` is unavailable, the installer defaults to `%LocalAppData%\Programs\LlamaCppWindowsManager`.
-- The install folder is still editable in the setup wizard before files are copied.
-- Existing installations are detected by a stable Inno Setup `AppId`, so updates and repairs reuse the previous install folder.
-- Updating an older install removes the old `LlamaCppConsole.exe` app binary while preserving the existing install directory and `data` folder.
-- The final installer page includes a launch-after-install option.
-- The installer creates a Start Menu shortcut and offers an optional Desktop shortcut.
-- Fresh installs offer a checked-by-default Start with Windows task. The app also exposes the same startup preference in Settings.
-- The installer includes the project `LICENSE`, dependency notices, and the
-  self-contained .NET runtime license/notices under `licenses\dotnet`.
+- Новые установки предпочитают `D:\LlamaCppWindowsManager`, если диск `D:` существует.
+- Если `D:` недоступен, установщик по умолчанию использует `%LocalAppData%\Programs\LlamaCppWindowsManager`.
+- Папку установки по-прежнему можно изменить в мастере установки до копирования файлов.
+- Существующие установки определяются по стабильному `AppId` Inno Setup, поэтому обновления и восстановления повторно используют предыдущую папку установки.
+- Обновление старой установки удаляет старый бинарный файл приложения `LlamaCppConsole.exe`, сохраняя существующий каталог установки и папку `data`.
+- Последняя страница установщика включает опцию запуска после установки.
+- Установщик создаёт ярлык в меню «Пуск» и предлагает необязательный ярлык на рабочем столе.
+- Новые установки предлагают отмеченную по умолчанию задачу автозапуска с Windows. Приложение также предоставляет эту же настройку запуска в Настройках.
+- Установщик включает `LICENSE` проекта, уведомления о зависимостях и лицензию/уведомления самодостаточной среды выполнения .NET в `licenses\dotnet`.
 
-## Data Preservation
+## Сохранение данных
 
-The app creates its workspace under `data` beside `LlamaCppWindowsManager.exe` when that location is writable:
+Приложение создаёт свою рабочую область в `data` рядом с `LlamaCppWindowsManager.exe`, если это расположение доступно для записи:
 
 ```text
 data\
@@ -58,11 +57,8 @@ data\
   logs\
 ```
 
-Installer updates and repairs overwrite application files only. They do not delete `data`, models, runtimes, logs, cache, or state.
+Обновления и восстановления установщика перезаписывают только файлы приложения. Они не удаляют `data`, модели, среды выполнения, журналы, кэш или состояние.
 
-UI visibility choices are stored in the preserved SQLite state. An update keeps
-existing choices. When upgrading a workspace that predates the **Settings >
-UI** fields, the six Overview status cards and live log default visible; raw
-llama.cpp metrics and the Models Hugging Face section default hidden.
+Выбор видимости интерфейса хранится в сохраняемом состоянии SQLite. Обновление сохраняет существующий выбор. При обновлении рабочей области, созданной до появления полей **Настройки > Интерфейс**, шесть карточек статуса Обзора и журнал в реальном времени по умолчанию видимы; необработанные метрики llama.cpp и раздел Hugging Face на странице «Модели» по умолчанию скрыты.
 
-Uninstall keeps `data` by default. If `data` exists, the uninstaller asks whether to delete it, with the safe default set to keep the data.
+Удаление по умолчанию сохраняет `data`. Если `data` существует, деинсталлятор спрашивает, удалить ли её, при этом безопасный вариант по умолчанию — сохранить данные.

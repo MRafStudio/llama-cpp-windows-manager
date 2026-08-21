@@ -1,30 +1,33 @@
-# GitHub Release v2.2.0 Draft
+# Черновик релиза GitHub v2.2.0
 
-This file is the copy/paste source for the next GitHub release.
+Этот файл — источник для копирования/вставки в следующий релиз GitHub.
 
-## Copy/Paste Release Notes
+## Заметки о выпуске (копирование/вставка)
 
-- Refined responsive light/dark UI, clearer Settings and launch controls,
-  filtered runtime inventories, a compact searchable Help centre, and an
-  updated animated product tour.
-- Added launch-profile groups with retention and eviction policies,
-  transactional multi-model loading, safer companion detection, and a unified
-  runtime install, source-download, build, and discovery workflow.
-- Expanded the authenticated `llwmctl` control API with group/profile
-  operations, presentation settings, and direct-session or gateway inspection
-  that uses the stored serving key without exposing it.
-- Improved session lifecycle, gateway behavior, live metrics, download/update
-  validation, rollback, process cleanup, accessibility, and maintainable feature
-  boundaries, backed by a larger release-hardening test suite.
-- Updated all 21 language resource contracts, including localized groups and
-  endpoint inspection; eleven packs include translated Help and the remaining
-  packs use complete English Help fallbacks. Upgrades preserve existing models,
-  runtimes, profiles, settings, and application data.
+- Уточнён адаптивный светлый/тёмный интерфейс, более понятные настройки и
+  элементы управления запуском, фильтруемые списки сред выполнения, компактный
+  центр справки с поиском и обновлённый анимированный обзор продукта.
+- Добавлены группы профилей запуска с политиками удержания и вытеснения,
+  транзакционная загрузка нескольких моделей, более безопасное обнаружение
+  сопутствующих компонентов и единый рабочий процесс установки среды выполнения,
+  загрузки исходников, сборки и обнаружения.
+- Расширен аутентифицированный управляющий API `llwmctl` операциями с
+  группами/профилями, настройками представления и проверкой прямой сессии или
+  шлюза, которая использует сохранённый ключ обслуживания, не раскрывая его.
+- Улучшены жизненный цикл сессий, поведение шлюза, живые метрики, проверка
+  загрузок/обновлений, откат, очистка процессов, доступность и поддерживаемые
+  границы функциональности; всё это подкреплено расширенным набором тестов для
+  закалки релизов.
+- Обновлены все 21 контракт языковых ресурсов, включая локализованные группы и
+  проверку конечных точек; одиннадцать пакетов содержат переведённую справку,
+  остальные используют полные английские запасные варианты справки. Обновления
+  сохраняют существующие модели, среды выполнения, профили, настройки и данные
+  приложения.
 
-These artifacts are unsigned. Verify downloads with the matching SHA-256
-companion files before running them.
+Эти артефакты не подписаны. Перед запуском проверяйте загрузки по
+соответствующим файлам-компаньонам SHA-256.
 
-#### Artifacts To Upload
+#### Артефакты для загрузки
 
 - `dist\LlamaCppWindowsManager-win-x64.zip`
 - `dist\LlamaCppWindowsManager-win-x64.zip.sha256`
@@ -33,6 +36,6 @@ companion files before running them.
 - `dist\installer\LlamaCppWindowsManager-Setup-2.2.0-win-x64.exe`
 - `dist\installer\LlamaCppWindowsManager-Setup-2.2.0-win-x64.exe.sha256`
 
-The standalone executable and its checksum are required for the in-app updater
-used by v1.x, v2.0, and v2.1 installations. Do not publish v2.2.0 without all six
-assets above.
+Автономный исполняемый файл и его контрольная сумма обязательны для встроенного
+обновлятора, используемого установками v1.x, v2.0 и v2.1. Не публикуйте v2.2.0
+без всех шести указанных выше артефактов.

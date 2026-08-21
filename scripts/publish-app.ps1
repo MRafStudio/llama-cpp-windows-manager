@@ -159,6 +159,7 @@ $BundleFiles = @(
   @{ Path = "AGENTS.md"; Source = (Join-Path $AppDir "AGENTS.md") },
   @{ Path = "agent.md"; Source = (Join-Path $AppDir "agent.md") },
   @{ Path = "docs/CONTROL_API.md"; Source = (Join-Path $AppDir "docs\CONTROL_API.md") },
+  @{ Path = "docs/LLAMAMANAGER-SERVICE.md"; Source = (Join-Path $AppDir "docs\LLAMAMANAGER-SERVICE.md") },
   @{ Path = "LICENSE"; Source = (Join-Path $AppDir "LICENSE") },
   @{ Path = "THIRD-PARTY-NOTICES.md"; Source = (Join-Path $AppDir "THIRD-PARTY-NOTICES.md") },
   @{ Path = "licenses/Apache-2.0.txt"; Source = (Join-Path $AppDir "licenses\Apache-2.0.txt") },
@@ -216,6 +217,27 @@ foreach ($BundleFile in $BundleFiles) {
   New-Item -ItemType Directory -Path (Split-Path -Parent $PublishTarget) -Force | Out-Null
   Copy-Item -LiteralPath $BundleSource -Destination $PublishTarget -Force
 }
+
+# Windows-служба llama-cpp-server (фича форка) — самодостаточный single-file exe
+# входит в portable-дистрибутив и в архив.
+$ServiceProject = Join-Path $AppDir "src\LocalLlmConsole.Service\LocalLlmConsole.Service.csproj"
+$servicePublishArgs = @(
+  "publish",
+  $ServiceProject,
+  "-c",
+  $Configuration,
+  "-r",
+  $Runtime,
+  "--self-contained",
+  "true",
+  "-p:PublishSingleFile=true",
+  "-p:IncludeNativeLibrariesForSelfExtract=true",
+  "-p:EnableCompressionInSingleFile=true",
+  "-o",
+  $PublishDir
+)
+& $Dotnet @servicePublishArgs
+if ($LASTEXITCODE -ne 0) { throw "LocalLlmConsole.Service publish failed." }
 
 Get-ChildItem -Path $PublishDir -Recurse -Filter *.pdb -File -ErrorAction SilentlyContinue |
   Remove-Item -Force
