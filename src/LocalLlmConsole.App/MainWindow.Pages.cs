@@ -36,6 +36,7 @@ public partial class MainWindow
             RunBackground(RefreshOverviewAsync, "Overview refresh failed");
             RunBackground(RefreshOverviewModelSelectorAsync, "Overview model refresh failed");
             RunBackground(RefreshRuntimeMetricsAsync, "Runtime metrics refresh failed");
+            RunBackground(AdoptServiceManagedSessionAsync, "Service session adoption failed");
             StartRuntimeDashboardRefreshTimer();
         }
     }
@@ -106,7 +107,10 @@ public partial class MainWindow
                 LoadServiceModelsAsync,
                 LoadServiceProfilesAsync,
                 LoadServiceRuntimesAsync,
-                BuildServiceLaunchArgs);
+                BuildServiceLaunchArgs,
+                // Перед стартом службы освобождаем порт шлюза: служба должна
+                // занять 8101, а GUI-шлюз обязан уступить (иначе bind fail).
+                () => RunBackground(ReleaseGatewayPortForServiceAsync, "Gateway port release failed"));
         }
 
         // Привязываем ViewModel к MainWindowViewModel для данных

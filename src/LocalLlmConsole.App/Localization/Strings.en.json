@@ -1,5 +1,5 @@
 {
-  "App.Title": "llama.cpp Windows Manager",
+  "App.Title": "llama.cpp Windows Manager (ext)",
   "App.Version": "v{0}",
   "Nav.Overview": "Overview",
   "Nav.Models": "Models",
@@ -512,7 +512,7 @@
   "Gateway.Enabled": "Enabled",
   "Gateway.Listening": "Listening",
   "Gateway.Off": "Off",
-  "Tray.ShowWindow": "Show llama.cpp Windows Manager",
+  "Tray.ShowWindow": "Show llama.cpp Windows Manager (ext)",
   "Tray.Exit": "Exit",
   "Updates.NoCheckYet": "No update check has run in this session yet.",
   "Updates.NoUpdatesAvailable": "No updates available. Current version: {0}",

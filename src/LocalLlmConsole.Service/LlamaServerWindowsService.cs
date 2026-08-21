@@ -147,8 +147,9 @@ public sealed class LlamaServerWindowsService : ServiceBase
 
     /// <summary>
     /// Служба — постоянный шлюз локальных LLM. Гарантирует:
-    /// порт 8101 (единый шлюз) и красивое имя модели (--alias),
-    /// формируемое из имени файла: разделители '-' и '_' → пробел.
+    /// красивое имя модели (--alias), формируемое из имени файла:
+    /// разделители '-' и '_' → пробел. Порт и host выбирает планировщик
+    /// из настроек приложения (порт шлюза / доступ в LAN).
     /// </summary>
     private static IReadOnlyList<string> NormalizeArguments(IReadOnlyList<string> planArguments)
     {
@@ -159,7 +160,6 @@ public sealed class LlamaServerWindowsService : ServiceBase
             ? ""
             : Path.GetFileNameWithoutExtension(modelPath).Replace('-', ' ').Replace('_', ' ');
 
-        SetArgument(args, "--port", "8101");
         if (!string.IsNullOrWhiteSpace(alias))
             SetArgument(args, "--alias", alias);
 

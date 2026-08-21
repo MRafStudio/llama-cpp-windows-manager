@@ -190,5 +190,9 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\test-release-g
 
 ## Лицензия
 
+Этот проект — форк [llama.cpp Windows Manager](https://github.com/alekk89/llama-cpp-windows-manager)
+(автор **alekk89**), распространяемый по лицензии **MIT**. Копирайт-уведомление
+оригинала сохранено в файле `LICENSE` без изменений.
+
 Распространяется по [лицензии MIT](LICENSE). Включённые зависимости сохраняют
 собственные лицензии; см. [уведомления третьих сторон](THIRD-PARTY-NOTICES.md).

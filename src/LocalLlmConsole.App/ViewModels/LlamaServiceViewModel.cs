@@ -6,6 +6,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Threading;
 using LocalLlmConsole.Localization;
 using LocalLlmConsole.Services;
 
@@ -345,7 +346,8 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
         Func<Task<IReadOnlyList<LocalLlmConsole.Models.ModelRecord>>> loadModels,
         Func<LocalLlmConsole.Models.ModelRecord, Task<IReadOnlyList<LocalLlmConsole.Models.NamedModelLaunchProfile>>> loadProfiles,
         Func<Task<IReadOnlyList<LocalLlmConsole.Models.RuntimeRecord>>> loadRuntimes,
-        Func<LocalLlmConsole.Models.ModelRecord, string, LocalLlmConsole.Models.RuntimeRecord, IReadOnlyList<string>> buildLaunchArgs)
+        Func<LocalLlmConsole.Models.ModelRecord, string, LocalLlmConsole.Models.RuntimeRecord, IReadOnlyList<string>> buildLaunchArgs,
+        Action? onServiceStarting = null)
     {
         _serviceManager = serviceManager ?? throw new ArgumentNullException(nameof(serviceManager));
         _installer = installer ?? throw new ArgumentNullException(nameof(installer));
@@ -356,6 +358,7 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
         _loadProfiles = loadProfiles ?? throw new ArgumentNullException(nameof(loadProfiles));
         _loadRuntimes = loadRuntimes ?? throw new ArgumentNullException(nameof(loadRuntimes));
         _buildLaunchArgs = buildLaunchArgs ?? throw new ArgumentNullException(nameof(buildLaunchArgs));
+        _onServiceStarting = onServiceStarting;
 
         StartCommand = new RelayCommand(ExecuteStart, CanExecuteStart);
         StopCommand = new RelayCommand(ExecuteStop, CanExecuteStop);
@@ -369,10 +372,47 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
 
         _ = LoadStatusAsync();
         _ = LoadSelectionsAsync();
+
+        // Периодический опрос статуса службы: если службу остановили/запустили
+        // вне GUI (например, из панели Windows), кнопки и статус обновятся сами.
+        _statusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+        _statusTimer.Tick += async (_, _) => await RefreshStatusSilentlyAsync();
+        _statusTimer.Start();
+    }
+
+    private readonly DispatcherTimer _statusTimer;
+
+    /// <summary>
+    /// Тихий опрос статуса службы (без спиннера): обновляет кнопки и статус,
+    /// если состояние службы изменилось извне.
+    /// </summary>
+    private async Task RefreshStatusSilentlyAsync()
+    {
+        if (_isLoading || !_isInstalled) return;
+        try
+        {
+            var status = _serviceManager.GetStatus();
+            if (status != _status)
+            {
+                Status = status;
+                StatusText = status switch
+                {
+                    LlamaServiceStatus.Running => Loc.T("Service.Status.Running"),
+                    LlamaServiceStatus.Stopped => Loc.T("Service.Status.Stopped"),
+                    _ => Loc.T("Service.Status.Unknown")
+                };
+                ProcessIdText = status == LlamaServiceStatus.Running ? $"PID: {GetLlamaServerPid()}" : "PID: —";
+            }
+        }
+        catch
+        {
+            // Опрос не критичен — следующее срабатывание повторит попытку.
+        }
     }
 
     private readonly Action<string> _setStatus;
     private readonly Func<string, Task> _setStatusAsync;
+    private readonly Action? _onServiceStarting;
 
     private async Task LoadStatusAsync()
     {
@@ -502,6 +542,9 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
                 IsLoading = false;
                 return;
             }
+            // Служба должна занять порт шлюза: освобождаем его ДО старта,
+            // иначе llama-server упадёт с "couldn't bind" (порт занят GUI-шлюзом).
+            _onServiceStarting?.Invoke();
             var result = _serviceManager.Start();
             ApplyResult(result);
         }

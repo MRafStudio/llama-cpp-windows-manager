@@ -18,7 +18,40 @@ public partial class MainWindow
     /// True, если шлюзом управляет служба (служба установлена и запущена) —
     /// тогда собственный шлюз GUI поднимать нельзя: порт 8101 занят службой.
     /// </summary>
-    private bool ShouldUseServiceGateway()
+    private bool ShouldUseServiceGateway() => IsServiceGatewayRunning();
+
+    /// <summary>
+    /// Освобождает порт шлюза и GUI-модели: служба — единственный владелец.
+    /// Вызывается перед стартом службы.
+    /// </summary>
+    private async Task ReleaseGatewayPortForServiceAsync()
+    {
+        try
+        {
+            if (_gateway is not null)
+            {
+                await StopModelGatewayAsync();
+                UpdateGatewayStatusText();
+            }
+
+            // Служба становится единственным владельцем моделей:
+            // GUI-сессии (реальные процессы) останавливаем, чтобы не было
+            // дубля на порту профиля и лишней нагрузки на VRAM.
+            var ownedSessions = _sessions.Snapshots()
+                .Where(session => session.IsRunning && session.ProcessId > 0)
+                .ToList();
+            foreach (var session in ownedSessions)
+                await _sessions.StopAsync(session.SessionId, "Service started: GUI runtime released.");
+            if (ownedSessions.Count > 0)
+                RefreshOverviewSessionRows();
+        }
+        catch (Exception ex)
+        {
+            Trace.TraceWarning($"Could not release gateway port for service: {ex}");
+        }
+    }
+
+    private bool IsServiceGatewayRunning()
     {
         var serviceManager = new Services.WindowsServiceManager();
         return serviceManager.GetStatus() == Services.LlamaServiceStatus.Running;
@@ -33,6 +66,17 @@ public partial class MainWindow
     {
         try
         {
+            var serviceManager = new Services.WindowsServiceManager();
+            if (serviceManager.GetStatus() != Services.LlamaServiceStatus.Running) return;
+
+            // Служба — владелец шлюза 8101. Если GUI уже поднял свой шлюз
+            // (службу запустили после старта GUI) — освобождаем порт для службы.
+            if (_gateway is not null)
+            {
+                await StopModelGatewayAsync();
+                UpdateGatewayStatusText();
+            }
+
             var configPath = Path.Combine(_workspaceRoot, "state", "service-config.json");
             if (!File.Exists(configPath)) return;
 
@@ -67,10 +111,13 @@ public partial class MainWindow
             if (runtime is null) return;
 
             // Сессия-призрак: процессом управляет служба, GUI только отображает её.
+            // Порт и host — из настроек приложения (порт шлюза / доступ в LAN),
+            // как их прочитает и сама служба при запуске.
+            var gatewayLan = _settings.ModelAccessMode is "gateway" or "both";
             var settings = _settings with
             {
-                Host = "127.0.0.1",
-                Port = 8101,
+                Host = gatewayLan ? "0.0.0.0" : "127.0.0.1",
+                Port = _settings.AutoLoadGatewayEnabled ? _settings.AutoLoadGatewayPort : (profile?.Settings.Port ?? _settings.AutoLoadGatewayPort),
                 ModelApiKey = _settings.ModelApiKey,
                 RequireApiKeyAuth = _settings.RequireApiKeyAuth
             };

@@ -39,7 +39,11 @@ public partial class MainWindow
     {
         var result = await _coreServices.Runtime.RuntimeSessionReconciliationApplication.ReconcileAsync(
             new RuntimeSessionReconciliationApplicationActions(
-                session => _coreServices.Runtime.RuntimeEndpointProbe.IsRespondingAsync(session.LaunchSettings),
+                // Сессия-«призрак» службы (ProcessId = 0) живёт, пока запущена служба,
+                // а не пока отвечает эндпоинт: модель может ещё грузиться.
+                session => session.ProcessId == 0
+                    ? Task.FromResult(IsServiceGatewayRunning())
+                    : _coreServices.Runtime.RuntimeEndpointProbe.IsRespondingAsync(session.LaunchSettings),
                 session => _coreServices.Runtime.RuntimeEndpointProbe.IsAliveAsync(session.LaunchSettings),
                 settings => _activeRuntimeSettings = settings,
                 transition =>

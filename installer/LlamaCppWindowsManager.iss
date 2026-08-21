@@ -1,4 +1,4 @@
-#define AppName "llama.cpp Windows Manager"
+#define AppName "llama.cpp Windows Manager (ext)"
 #define AppExeName "LlamaCppWindowsManager.exe"
 #ifndef AppVersion
 #define AppVersion "2.2.0"

@@ -63,7 +63,8 @@ public sealed class WindowsServiceManager
                 return new LlamaServiceOperationResult(true, "Служба уже запущена.", LlamaServiceStatus.Running);
 
             controller.Start();
-            controller.WaitForStatus(ServiceControllerStatus.Running, TimeSpan.FromSeconds(30));
+            // Служба стартует почти мгновенно (SCM); при падении не ждём 30 секунд.
+            controller.WaitForStatus(ServiceControllerStatus.Running, TimeSpan.FromSeconds(5));
             return new LlamaServiceOperationResult(true, $"Служба {ServiceName} запущена.", LlamaServiceStatus.Running);
         }
         catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 5)
@@ -92,7 +93,7 @@ public sealed class WindowsServiceManager
                 return new LlamaServiceOperationResult(true, "Служба уже остановлена.", LlamaServiceStatus.Stopped);
 
             controller.Stop();
-            controller.WaitForStatus(ServiceControllerStatus.Stopped, TimeSpan.FromSeconds(30));
+            controller.WaitForStatus(ServiceControllerStatus.Stopped, TimeSpan.FromSeconds(5));
             return new LlamaServiceOperationResult(true, $"Служба {ServiceName} остановлена.", LlamaServiceStatus.Stopped);
         }
         catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 5)

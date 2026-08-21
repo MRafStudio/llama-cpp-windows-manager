@@ -80,19 +80,39 @@ public static class ServiceLaunchPlanner
             throw new InvalidOperationException(
                 $"llama-server не найден (среда выполнения '{config.RuntimeId}'). Выберите среду выполнения на странице «Управление службой».");
 
-        return new ServiceLaunchPlan(executable, BuildArguments(settingsJson, modelPath));
+        // 4. Настройки приложения: доступ в LAN, порт шлюза, автозагрузка шлюза.
+        var accessMode = JsonSetting(connection, "modelAccessMode", "\"local\"") ?? "local";
+        var gatewayEnabled = string.Equals(JsonSetting(connection, "autoLoadGatewayEnabled", "true"), "true", StringComparison.OrdinalIgnoreCase);
+        var gatewayPort = int.TryParse(JsonSetting(connection, "autoLoadGatewayPort", "8101"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var gatewayPortValue)
+            && gatewayPortValue is > 0 and <= 65535
+            ? gatewayPortValue
+            : 8101;
+        var profilePort = ProfilePort(settingsJson);
+
+        // Шлюз открыт в LAN при режимах gateway/both; прямые модели — при models/both.
+        var gatewayLan = accessMode is "gateway" or "both";
+        var modelsLan = accessMode is "models" or "both";
+        var host = (gatewayEnabled ? gatewayLan : modelsLan) ? "0.0.0.0" : "127.0.0.1";
+        var port = gatewayEnabled ? gatewayPort : (profilePort > 0 ? profilePort : gatewayPort);
+
+        return new ServiceLaunchPlan(executable, BuildArguments(settingsJson, modelPath, host, port));
     }
 
     /// <summary>
     /// Строит аргументы llama-server из параметров профиля (settings_json из БД).
-    /// Жёсткие правила (порт 8101, alias) применяет вызывающий код.
+    /// Порт и host выбираются по настройкам приложения (шлюз/LAN), alias — вызывающим кодом.
     /// </summary>
-    private static IReadOnlyList<string> BuildArguments(string settingsJson, string modelPath)
+    private static IReadOnlyList<string> BuildArguments(string settingsJson, string modelPath, string host, int port)
     {
         using var doc = JsonDocument.Parse(settingsJson);
         var root = doc.RootElement;
 
-        var args = new List<string> { "--model", modelPath, "--host", "127.0.0.1" };
+        var args = new List<string>
+        {
+            "--model", modelPath,
+            "--host", host,
+            "--port", port.ToString(CultureInfo.InvariantCulture)
+        };
 
         AddInt(args, root, "ContextSize", "--ctx-size");
         AddInt(args, root, "GpuLayers", "--n-gpu-layers");
@@ -278,12 +298,53 @@ public static class ServiceLaunchPlanner
         return tokens;
     }
 
-    private static string? QueryString(SqliteConnection connection, string sql, string? id = null, string? modelId = null)
+    private static string? JsonSetting(SqliteConnection connection, string key, string fallback)
+    {
+        var raw = QueryString(connection, "SELECT value_json FROM settings WHERE key = $key", key: key);
+        if (string.IsNullOrWhiteSpace(raw)) return fallback;
+        try
+        {
+            using var doc = JsonDocument.Parse(raw);
+            return doc.RootElement.ValueKind switch
+            {
+                JsonValueKind.String => doc.RootElement.GetString() ?? fallback,
+                JsonValueKind.True => "true",
+                JsonValueKind.False => "false",
+                JsonValueKind.Number => doc.RootElement.GetRawText(),
+                _ => fallback
+            };
+        }
+        catch
+        {
+            return fallback;
+        }
+    }
+
+    /// <summary>
+    /// Порт модели из параметров профиля (используется, когда шлюз отключён).
+    /// </summary>
+    private static int ProfilePort(string settingsJson)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(settingsJson);
+            if (doc.RootElement.TryGetProperty("Port", out var port) && port.TryGetInt32(out var value))
+                return value;
+        }
+        catch
+        {
+            // Невалидный JSON профиля — порт неизвестен, вызывающий код подставит шлюзовой.
+        }
+        return 0;
+    }
+
+    private static string? QueryString(SqliteConnection connection, string sql, string id = "", string modelId = "", string key = "")
     {
         using var command = connection.CreateCommand();
         command.CommandText = sql;
-        if (id is not null) command.Parameters.AddWithValue("$id", id);
-        if (modelId is not null) command.Parameters.AddWithValue("$model", modelId);
+        if (!string.IsNullOrEmpty(id)) command.Parameters.AddWithValue("$id", id);
+        if (!string.IsNullOrEmpty(modelId)) command.Parameters.AddWithValue("$model", modelId);
+        if (!string.IsNullOrEmpty(key)) command.Parameters.AddWithValue("$key", key);
         return command.ExecuteScalar() as string;
     }
 }
