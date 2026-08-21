@@ -603,7 +603,7 @@
   "Tray.ShowWindow": "Показать Менеджер llama.cpp для Windows",
   "Tray.Exit": "Выход",
   "Updates.NoCheckYet": "Проверка обновлений в этой сессии ещё не выполнялась.",
-  "Updates.NoUpdatesAvailable": "Обновления недоступны. Текущая версия: {0}",
+  "Updates.NoUpdatesAvailable": "Обновлений нет. Текущая версия: {0}",
   "Updates.Available": "Доступно обновление: {0} -> {1}",
   "Updates.RepositoryLabel": "Репозиторий",
   "Logs.DeleteBlockedActive": "Остановите активную среду выполнения перед удалением её текущего журнала.",

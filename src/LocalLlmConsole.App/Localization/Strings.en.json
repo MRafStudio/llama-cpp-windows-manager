@@ -619,7 +619,7 @@
   "Tray.ShowWindow": "Show llama.cpp Windows Manager (ext)",
   "Tray.Exit": "Exit",
   "Updates.NoCheckYet": "No update check has run in this session yet.",
-  "Updates.NoUpdatesAvailable": "No updates available. Current version: {0}",
+  "Updates.NoUpdatesAvailable": "No updates. Current version: {0}",
   "Updates.Available": "Update available: {0} -> {1}",
   "Updates.RepositoryLabel": "Repository",
   "Logs.DeleteBlockedActive": "Stop the active runtime before deleting its current log.",

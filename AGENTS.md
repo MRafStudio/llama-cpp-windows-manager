@@ -18,6 +18,7 @@ loopback API управления внутри запущенного Manager, �
   апстрима!
 - **Бумпание версии — ВСЕ места**: при смене версии обновлять ОБЯЗАТЕЛЬНО:
   `LocalLlmConsole.App.csproj` (Version/AssemblyVersion/FileVersion/InformationalVersion),
+  **`LocalLlmConsole.Service.csproj` (Version)**,
   `MainWindow.xaml` (Title), `installer/LlamaCppWindowsManager.iss` (AppVersion),
   `MainWindow.State.cs` (AppVersionLabel). Забытая константа = неверный бейдж версии!
 - **Разметка страниц — DockPanel**: при добавлении ЛЮБОГО нового элемента в страницу

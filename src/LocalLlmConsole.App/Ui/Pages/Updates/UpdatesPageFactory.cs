@@ -41,7 +41,7 @@ public static class UpdatesPageFactory
         root.Children.Add(PageSectionFactory.FramedSection(Loc.T("Updates.StatusSectionTitle"), SoftText(request.ViewModel.StatusDetails)));
 
         if (request.ViewModel.LatestUpdate is { IsAvailable: true })
-            root.Children.Add(PageSectionFactory.FramedSection(Loc.T("Updates.LatestReleaseSectionTitle"), SoftText(request.ViewModel.LatestReleaseText)));
+            root.Children.Add(PageSectionFactory.FramedSection(Loc.T("Updates.LatestReleaseSectionTitle"), MarkdownTextBlockBuilder.Build(request.ViewModel.LatestReleaseText)));
 
         return new UpdatesPageBuildResult(root);
     }
