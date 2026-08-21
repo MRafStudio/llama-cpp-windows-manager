@@ -15,7 +15,12 @@ public sealed record AppUpdateInfo(
     long AssetSize,
     string ChecksumAssetName = "",
     string ChecksumAssetUrl = "",
-    string ExpectedSha256 = "");
+    string ExpectedSha256 = "",
+    string ServiceAssetName = "",
+    string ServiceAssetUrl = "",
+    string ServiceChecksumAssetName = "",
+    string ServiceChecksumAssetUrl = "",
+    string ServiceExpectedSha256 = "");
 
 public sealed record AppUpdateInstallPlan(
     string ScriptPath,
@@ -24,7 +29,10 @@ public sealed record AppUpdateInstallPlan(
     string NoticePath,
     string ObsoleteExe = "",
     string SourceCli = "",
-    string TargetCli = "");
+    string TargetCli = "",
+    string SourceService = "",
+    string TargetService = "",
+    string ServiceName = "");
 
 public sealed record InstalledUpdateNotice(string Version, string ReleaseName, string ReleaseNotes, DateTimeOffset InstalledAt);
 
@@ -102,8 +110,25 @@ public sealed partial class AppUpdateService
         Directory.CreateDirectory(stageRoot);
 
         var assetPath = Path.Combine(stageRoot, RegexSafeFileName(update.AssetName));
-        await DownloadAssetAsync(update.AssetUrl, assetPath, cancellationToken);
-        await AppUpdateAssetVerifier.VerifyChecksumAssetAsync(_http, update, assetPath, cancellationToken);
+        // Кэш: если файл уже скачан (та же версия) — не качаем повторно,
+        // проверяем контрольную сумму; битый кэш перекачиваем.
+        var cachedOk = File.Exists(assetPath) && new FileInfo(assetPath).Length > 0;
+        if (cachedOk)
+        {
+            try
+            {
+                await AppUpdateAssetVerifier.VerifyChecksumAssetAsync(_http, update, assetPath, cancellationToken);
+            }
+            catch
+            {
+                cachedOk = false;
+            }
+        }
+        if (!cachedOk)
+        {
+            await DownloadAssetAsync(update.AssetUrl, assetPath, cancellationToken);
+            await AppUpdateAssetVerifier.VerifyChecksumAssetAsync(_http, update, assetPath, cancellationToken);
+        }
         var stagedFiles = await Task.Run(() =>
         {
             var executable = PreparePortableExe(assetPath, stageRoot);
@@ -119,6 +144,42 @@ public sealed partial class AppUpdateService
             ? ""
             : Path.Combine(Path.GetDirectoryName(targetExe) ?? AppContext.BaseDirectory, ControlCliExeName);
 
+        // Служба: если установлена рядом с приложением — обновляем и её.
+        var serviceTargetPath = Path.Combine(Path.GetDirectoryName(targetExe) ?? AppContext.BaseDirectory, "LocalLlmConsole.Service.exe");
+        var stagedService = "";
+        if (File.Exists(serviceTargetPath) && IsServiceInstalled(WindowsServiceManager.ServiceName))
+        {
+            if (string.IsNullOrWhiteSpace(update.ServiceAssetUrl))
+                throw new InvalidOperationException("The release does not include LocalLlmConsole.Service.exe. Refusing to stage an incomplete update.");
+            var serviceUpdate = update with
+            {
+                AssetName = update.ServiceAssetName,
+                AssetUrl = update.ServiceAssetUrl,
+                ChecksumAssetName = update.ServiceChecksumAssetName,
+                ChecksumAssetUrl = update.ServiceChecksumAssetUrl,
+                ExpectedSha256 = update.ServiceExpectedSha256
+            };
+            var serviceAssetPath = Path.Combine(stageRoot, RegexSafeFileName(update.ServiceAssetName));
+            var serviceCachedOk = File.Exists(serviceAssetPath) && new FileInfo(serviceAssetPath).Length > 0;
+            if (serviceCachedOk)
+            {
+                try
+                {
+                    await AppUpdateAssetVerifier.VerifyChecksumAssetAsync(_http, serviceUpdate, serviceAssetPath, cancellationToken);
+                }
+                catch
+                {
+                    serviceCachedOk = false;
+                }
+            }
+            if (!serviceCachedOk)
+            {
+                await DownloadAssetAsync(update.ServiceAssetUrl, serviceAssetPath, cancellationToken);
+                await AppUpdateAssetVerifier.VerifyChecksumAssetAsync(_http, serviceUpdate, serviceAssetPath, cancellationToken);
+            }
+            stagedService = serviceAssetPath;
+        }
+
         var pendingNotice = Path.Combine(stageRoot, "installed-update.json");
         await File.WriteAllTextAsync(pendingNotice, JsonSerializer.Serialize(new InstalledUpdateNotice(
             update.LatestVersion,
@@ -130,7 +191,24 @@ public sealed partial class AppUpdateService
         Directory.CreateDirectory(Path.GetDirectoryName(noticePath)!);
         var scriptPath = Path.Combine(stageRoot, "Install-LlamaCppWindowsManagerUpdate.ps1");
         await File.WriteAllTextAsync(scriptPath, UpdaterScript(), new UTF8Encoding(false), cancellationToken);
-        return new AppUpdateInstallPlan(scriptPath, stagedExe, targetExe, noticePath, obsoleteExe, stagedCli, targetCli);
+        return new AppUpdateInstallPlan(
+            scriptPath, stagedExe, targetExe, noticePath, obsoleteExe, stagedCli, targetCli,
+            stagedService, string.IsNullOrWhiteSpace(stagedService) ? "" : serviceTargetPath,
+            string.IsNullOrWhiteSpace(stagedService) ? "" : WindowsServiceManager.ServiceName);
+    }
+
+    private static bool IsServiceInstalled(string serviceName)
+    {
+        try
+        {
+            using var controller = new System.ServiceProcess.ServiceController(serviceName);
+            _ = controller.Status;
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     public void StartInstaller(AppUpdateInstallPlan plan, int currentProcessId)
@@ -157,6 +235,15 @@ public sealed partial class AppUpdateService
         })
         {
             psi.ArgumentList.Add(arg);
+        }
+        if (!string.IsNullOrWhiteSpace(plan.SourceService))
+        {
+            psi.ArgumentList.Add("-SourceService");
+            psi.ArgumentList.Add(plan.SourceService);
+            psi.ArgumentList.Add("-TargetService");
+            psi.ArgumentList.Add(plan.TargetService);
+            psi.ArgumentList.Add("-ServiceName");
+            psi.ArgumentList.Add(plan.ServiceName);
         }
 
         _startProcess(psi);

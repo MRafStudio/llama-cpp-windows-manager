@@ -15,6 +15,15 @@ public static class AppUpdateReleaseParser
         var assets = release["assets"]?.AsArray();
         var asset = SelectPortableAsset(assets);
         var checksum = SelectChecksumAsset(assets, asset.Name);
+        const string serviceAssetName = "LocalLlmConsole.Service.exe";
+        var serviceAsset = assets
+            ?.OfType<JsonObject>()
+            .Select(a => (
+                Name: a["name"]?.ToString() ?? "",
+                Url: FirstNonBlank(a["browser_download_url"]?.ToString(), a["url"]?.ToString())))
+            .FirstOrDefault(a => a.Name.Equals(serviceAssetName, StringComparison.OrdinalIgnoreCase))
+            ?? ("", "");
+        var serviceChecksum = SelectChecksumAsset(assets, serviceAsset.Name);
         var latest = NormalizeVersion(latestVersion);
         var current = NormalizeVersion(currentVersion);
         return new AppUpdateInfo(
@@ -28,7 +37,12 @@ public static class AppUpdateReleaseParser
             asset.Url,
             asset.Size,
             checksum.Name,
-            checksum.Url);
+            checksum.Url,
+            "",
+            serviceAsset.Name,
+            serviceAsset.Url,
+            serviceChecksum.Name,
+            serviceChecksum.Url);
     }
 
     public static AppUpdateInfo NoUpdateAvailable(string currentVersion, string message = "No updates are available.")

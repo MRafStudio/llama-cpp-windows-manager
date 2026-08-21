@@ -16,6 +16,10 @@ loopback API управления внутри запущенного Manager, �
   во ВСЕХ локализациях обязаны содержать суффикс `(ext)` — пользователь должен
   видеть, что это расширенная версия, а не оригинал. Не терять при имплементации
   апстрима!
+- **Бумпание версии — ВСЕ места**: при смене версии обновлять ОБЯЗАТЕЛЬНО:
+  `LocalLlmConsole.App.csproj` (Version/AssemblyVersion/FileVersion/InformationalVersion),
+  `MainWindow.xaml` (Title), `installer/LlamaCppWindowsManager.iss` (AppVersion),
+  `MainWindow.State.cs` (AppVersionLabel). Забытая константа = неверный бейдж версии!
 - **Разметка страниц — DockPanel**: при добавлении ЛЮБОГО нового элемента в страницу
   (Ui/Pages/*) ОБЯЗАТЕЛЬНО добавлять `DockPanel.SetDock(элемент, Dock.Top)` в блок
   «Set DockPanel alignment» в конце фабрики — иначе элемент причалится слева
