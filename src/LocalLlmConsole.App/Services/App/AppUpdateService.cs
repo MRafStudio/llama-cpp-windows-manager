@@ -30,7 +30,7 @@ public sealed record InstalledUpdateNotice(string Version, string ReleaseName, s
 
 public sealed class AppUpdateService
 {
-    public const string RepositoryUrl = "https://github.com/alekk89/llama-cpp-windows-manager";
+    public const string RepositoryUrl = "https://github.com/MRafStudio/llama-cpp-windows-manager";
     public const string PortableExeName = "LlamaCppWindowsManager.exe";
     public const string ControlCliExeName = "llwmctl.exe";
     private const string ObsoletePortableExeName = "LlamaCppConsole.exe";

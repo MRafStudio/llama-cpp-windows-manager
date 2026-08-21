@@ -205,7 +205,7 @@ LlamaCppWindowsManager.exe --bootstrap-agent-sidecars-only
 ## Working from GitHub or source
 
 For end-user installation, prefer the installer or portable ZIP from
-[GitHub Releases](https://github.com/alekk89/llama-cpp-windows-manager/releases/latest)
+[GitHub Releases](https://github.com/MRafStudio/llama-cpp-windows-manager/releases/latest)
 and verify its matching `.sha256` file. Do not describe an unsigned artifact as
 trusted or signed.
 
@@ -217,7 +217,7 @@ if ($actual -ne $expected) { throw "Release checksum mismatch: $asset" }
 ```
 
 The canonical source repository is
-[github.com/alekk89/llama-cpp-windows-manager](https://github.com/alekk89/llama-cpp-windows-manager).
+[github.com/MRafStudio/llama-cpp-windows-manager](https://github.com/MRafStudio/llama-cpp-windows-manager).
 
 For repository changes, read `docs/DEVELOPMENT.md` and, for architectural work,
 `docs/ARCHITECTURE.md`. Preserve existing worktree changes and generated-data

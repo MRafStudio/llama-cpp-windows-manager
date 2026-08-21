@@ -831,7 +831,7 @@ public sealed partial class ReleaseHardeningTests
         Assert.Contains("ClearCacheAsync", source, StringComparison.Ordinal);
         Assert.Contains("_coreServices.App.CacheClearApplication.ClearAsync", source, StringComparison.Ordinal);
         Assert.DoesNotContain("CacheClearPlanStatus.", source, StringComparison.Ordinal);
-        Assert.Contains("<RepositoryUrl>https://github.com/alekk89/llama-cpp-windows-manager</RepositoryUrl>", project, StringComparison.Ordinal);
+        Assert.Contains("<RepositoryUrl>https://github.com/MRafStudio/llama-cpp-windows-manager</RepositoryUrl>", project, StringComparison.Ordinal);
 
         Assert.Contains("UpdatesPageFactory.Create(new UpdatesPageRequest(", source, StringComparison.Ordinal);
         Assert.True(

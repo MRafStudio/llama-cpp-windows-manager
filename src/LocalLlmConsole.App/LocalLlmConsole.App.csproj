@@ -10,7 +10,7 @@
     <RootNamespace>LocalLlmConsole</RootNamespace>
     <AssemblyTitle>llama.cpp Windows Manager</AssemblyTitle>
     <Product>llama.cpp Windows Manager</Product>
-    <RepositoryUrl>https://github.com/alekk89/llama-cpp-windows-manager</RepositoryUrl>
+    <RepositoryUrl>https://github.com/MRafStudio/llama-cpp-windows-manager</RepositoryUrl>
     <Version>2.2.0</Version>
     <AssemblyVersion>2.2.0.0</AssemblyVersion>
     <FileVersion>2.2.0.0</FileVersion>

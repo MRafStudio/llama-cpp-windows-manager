@@ -317,7 +317,7 @@ public sealed partial class ReleaseHardeningTests
           "tag_name": "v1.1.2",
           "name": "v1.1.2",
           "body": "Added update checks.",
-          "html_url": "https://github.com/alekk89/llama-cpp-windows-manager/releases/tag/v1.1.2",
+          "html_url": "https://github.com/MRafStudio/llama-cpp-windows-manager/releases/tag/v1.1.2",
           "assets": [
             { "name": "notes.txt", "browser_download_url": "https://example.invalid/notes.txt", "size": 10 },
             { "name": "LlamaCppWindowsManager-win-x64.zip", "browser_download_url": "https://example.invalid/app.zip", "size": 1234 },
@@ -548,7 +548,7 @@ public sealed partial class ReleaseHardeningTests
 
         var update = await service.CheckLatestAsync(TestContext.Current.CancellationToken);
 
-        Assert.Equal("https://api.github.com/repos/alekk89/llama-cpp-windows-manager/releases/latest", handler.RequestUri?.ToString());
+        Assert.Equal("https://api.github.com/repos/MRafStudio/llama-cpp-windows-manager/releases/latest", handler.RequestUri?.ToString());
         Assert.False(update.IsAvailable);
         Assert.Contains("No GitHub release feed", update.ReleaseNotes, StringComparison.OrdinalIgnoreCase);
     }

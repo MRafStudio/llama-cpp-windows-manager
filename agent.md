@@ -5,7 +5,7 @@ the authoritative guide for discovery, model identity, lifecycle safety,
 restarts, downloads, settings, installation, and source work.
 
 The canonical source repository is
-<https://github.com/alekk89/llama-cpp-windows-manager>; use GitHub Releases for
+<https://github.com/MRafStudio/llama-cpp-windows-manager>; use GitHub Releases for
 installation and clone the repository only for development or review.
 
 Use the `llwmctl.exe` beside the installed or portable application:

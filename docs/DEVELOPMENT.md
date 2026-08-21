@@ -8,13 +8,13 @@ installer from `dist`.
 
 ## Repository Onboarding
 
-The canonical repository is <https://github.com/alekk89/llama-cpp-windows-manager>.
+The canonical repository is <https://github.com/MRafStudio/llama-cpp-windows-manager>.
 End users should install a checksum-verified artifact from GitHub Releases;
 cloning the repository is the development path and does not install the app,
 models, or llama.cpp runtimes.
 
 ```powershell
-git clone https://github.com/alekk89/llama-cpp-windows-manager.git
+git clone https://github.com/MRafStudio/llama-cpp-windows-manager.git
 Set-Location llama-cpp-windows-manager
 Get-Content AGENTS.md
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./scripts/build-app.ps1 -Restore

@@ -7,7 +7,7 @@ endpoints on native Windows or Ubuntu/WSL.
 > Unofficial community project. Not affiliated with or endorsed by
 > `llama.cpp` or `ggml-org`.
 
-[Download the latest release](https://github.com/alekk89/llama-cpp-windows-manager/releases/latest)
+[Download the latest release](https://github.com/MRafStudio/llama-cpp-windows-manager/releases/latest)
 · [Read the documentation](docs/DEVELOPMENT.md)
 · [Automate with `llwmctl`](docs/CONTROL_API.md)
 
@@ -39,7 +39,7 @@ endpoints on native Windows or Ubuntu/WSL.
 ## Install
 
 Download the Windows x64 installer or portable ZIP from
-[GitHub Releases](https://github.com/alekk89/llama-cpp-windows-manager/releases/latest),
+[GitHub Releases](https://github.com/MRafStudio/llama-cpp-windows-manager/releases/latest),
 along with its matching `.sha256` file. Releases are self-contained; installing
 the .NET runtime separately is not required.
 

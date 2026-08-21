@@ -184,7 +184,7 @@ public sealed partial class ReleaseHardeningTests
         Assert.Contains("## Restart and recovery", instructions, StringComparison.Ordinal);
         Assert.Contains("## Troubleshooting", instructions, StringComparison.Ordinal);
         Assert.Contains("## Working from GitHub or source", instructions, StringComparison.Ordinal);
-        Assert.Contains("https://github.com/alekk89/llama-cpp-windows-manager", instructions, StringComparison.Ordinal);
+        Assert.Contains("https://github.com/MRafStudio/llama-cpp-windows-manager", instructions, StringComparison.Ordinal);
         Assert.Contains("GitHub Releases", instructions, StringComparison.Ordinal);
         Assert.Contains("Release checksum mismatch", instructions, StringComparison.Ordinal);
         Assert.Contains("single-instance", instructions, StringComparison.Ordinal);
