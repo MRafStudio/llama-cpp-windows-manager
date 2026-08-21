@@ -126,6 +126,7 @@ public sealed class ModelLaunchProfileService
     private const int QwenReasoningBudget = 8192;
     private const int QwenParallelSlots = 2;
     private const string QwenCustomParameters = "--n-predict 65536";
+    private const int QwenMinContextSize = 524288;
 
     private static ModelLaunchSettings ApplyModelContext(ModelLaunchSettings settings, ModelRecord model)
     {
@@ -145,6 +146,7 @@ public sealed class ModelLaunchProfileService
             {
                 settings = settings with
                 {
+                    ContextSize = 524288,
                     ReasoningBudget = QwenReasoningBudget,
                     ParallelSlots = QwenParallelSlots,
                     CustomParameters = QwenCustomParameters,

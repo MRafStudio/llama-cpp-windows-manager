@@ -39,6 +39,8 @@ public sealed class LlamaServerWindowsService : ServiceBase
 
     private Process? _process;
     private readonly object _processLock = new();
+    private StreamWriter? _logWriter;
+    private readonly object _logWriterLock = new();
 
     public LlamaServerWindowsService()
     {
@@ -51,26 +53,53 @@ public sealed class LlamaServerWindowsService : ServiceBase
 
     protected override void OnStart(string[] args)
     {
-        var config = LoadConfig()
-            ?? throw new InvalidOperationException($"Конфигурация службы не найдена: {ServiceConfig.DefaultPath}");
+        // Служба полностью автономна: выбор (модель/профиль/среда выполнения) —
+        // из service-config.json (на него влияет только страница «Управление службой»),
+        // параметры запуска — из профиля в БД приложения. GUI не может сломать запуск.
+        var plan = ServiceLaunchPlanner.Build(ServiceConfig.DefaultPath, DatabasePath);
 
-        if (string.IsNullOrWhiteSpace(config.ExecutablePath) || !File.Exists(config.ExecutablePath))
-            throw new InvalidOperationException($"llama-server не найден: {config.ExecutablePath}");
+        // Служба — постоянный шлюз локальных LLM: модель ВСЕГДА слушается
+        // на едином порту 8101 и под красивым именем (--alias из имени файла).
+        var arguments = NormalizeArguments(plan.Arguments);
 
         var psi = new ProcessStartInfo
         {
-            FileName = config.ExecutablePath,
+            FileName = plan.ExecutablePath,
             UseShellExecute = false,
             CreateNoWindow = true,
-            WorkingDirectory = Path.GetDirectoryName(config.ExecutablePath) ?? Environment.CurrentDirectory
+            WorkingDirectory = Path.GetDirectoryName(plan.ExecutablePath) ?? Environment.CurrentDirectory,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            StandardOutputEncoding = System.Text.Encoding.UTF8,
+            StandardErrorEncoding = System.Text.Encoding.UTF8
         };
-        foreach (var arg in config.Arguments)
+        foreach (var arg in arguments)
             psi.ArgumentList.Add(arg);
 
         lock (_processLock)
         {
             _process = Process.Start(psi)
                 ?? throw new InvalidOperationException("Не удалось запустить llama-server.");
+
+            // Вывод llama-server пишется в data/logs/llama-server-<timestamp>.log,
+            // чтобы «Журнал среды выполнения» в приложении показывал его в реальном времени.
+            var logPath = Path.Combine(AppContext.BaseDirectory, "data", "logs", $"llama-server-{DateTime.Now:yyyyMMdd-HHmmss}.log");
+            var directory = Path.GetDirectoryName(logPath);
+            if (!string.IsNullOrWhiteSpace(directory)) Directory.CreateDirectory(directory);
+            _logWriter = new StreamWriter(logPath, append: false, System.Text.Encoding.UTF8) { AutoFlush = true };
+            _process.OutputDataReceived += (_, eventArgs) => WriteLogLine(eventArgs.Data);
+            _process.ErrorDataReceived += (_, eventArgs) => WriteLogLine(eventArgs.Data);
+            _process.BeginOutputReadLine();
+            _process.BeginErrorReadLine();
+        }
+    }
+
+    private void WriteLogLine(string? line)
+    {
+        if (string.IsNullOrEmpty(line)) return;
+        lock (_logWriterLock)
+        {
+            _logWriter?.WriteLine(line);
         }
     }
 
@@ -104,21 +133,64 @@ public sealed class LlamaServerWindowsService : ServiceBase
         }
 
         process.Dispose();
+
+        StreamWriter? logWriter;
+        lock (_logWriterLock)
+        {
+            logWriter = _logWriter;
+            _logWriter = null;
+        }
+        logWriter?.Dispose();
     }
 
     protected override void OnShutdown() => OnStop();
 
-    private static ServiceConfig? LoadConfig()
+    /// <summary>
+    /// Служба — постоянный шлюз локальных LLM. Гарантирует:
+    /// порт 8101 (единый шлюз) и красивое имя модели (--alias),
+    /// формируемое из имени файла: разделители '-' и '_' → пробел.
+    /// </summary>
+    private static IReadOnlyList<string> NormalizeArguments(IReadOnlyList<string> planArguments)
     {
-        try
-        {
-            var path = ServiceConfig.DefaultPath;
-            if (!File.Exists(path)) return null;
-            return JsonSerializer.Deserialize<ServiceConfig>(File.ReadAllText(path));
-        }
-        catch
-        {
-            return null;
-        }
+        var args = planArguments.ToList();
+
+        var modelPath = ArgumentValue(args, "--model") ?? "";
+        var alias = string.IsNullOrWhiteSpace(modelPath)
+            ? ""
+            : Path.GetFileNameWithoutExtension(modelPath).Replace('-', ' ').Replace('_', ' ');
+
+        SetArgument(args, "--port", "8101");
+        if (!string.IsNullOrWhiteSpace(alias))
+            SetArgument(args, "--alias", alias);
+
+        return args;
     }
+
+    private static void SetArgument(IList<string> args, string name, string value)
+    {
+        for (var i = 0; i < args.Count - 1; i++)
+        {
+            if (!string.Equals(args[i], name, StringComparison.OrdinalIgnoreCase)) continue;
+            args[i + 1] = value;
+            return;
+        }
+        args.Add(name);
+        args.Add(value);
+    }
+
+    private static string? ArgumentValue(IReadOnlyList<string> args, string name)
+    {
+        for (var i = 0; i < args.Count - 1; i++)
+        {
+            if (string.Equals(args[i], name, StringComparison.OrdinalIgnoreCase))
+                return args[i + 1];
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Путь к БД приложения (выбор/профили/среды выполняения) — рядом с exe службы.
+    /// </summary>
+    private static string DatabasePath
+        => Path.Combine(AppContext.BaseDirectory, "data", "state", "local-llm-console.db");
 }

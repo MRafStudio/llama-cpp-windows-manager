@@ -148,8 +148,8 @@ public sealed class OverviewPageViewModel
                 T2 = "",
                 C6 = session.RuntimeName,
                 C7 = $"{session.Backend} {session.Mode}",
-                C8 = session.IsRunning && session.Status != LoadedModelSessionStatus.Stopping ? "Unload" : "",
-                B1 = session.IsRunning && session.Status != LoadedModelSessionStatus.Stopping,
+                C8 = session.IsRunning && session.Status != LoadedModelSessionStatus.Stopping && session.ProcessId > 0 ? "Unload" : "",
+                B1 = session.IsRunning && session.Status != LoadedModelSessionStatus.Stopping && session.ProcessId > 0,
                 B2 = session.IsRunning && session.Status is LoadedModelSessionStatus.Running or LoadedModelSessionStatus.Warm or LoadedModelSessionStatus.Unreachable,
                 Data = JsonSerializer.SerializeToNode(new { Kind = "Session", session.SessionId, session.ModelId }) as JsonObject ?? new JsonObject()
             };

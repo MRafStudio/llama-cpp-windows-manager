@@ -78,7 +78,10 @@ public partial class MainWindow : Window
             ShowOverview(refresh: false);
             await RefreshAllAsync();
             await RecoverActiveRuntimeSessionAsync();
-            await StartModelGatewaySafelyAsync();
+            if (!ShouldUseServiceGateway())
+                await StartModelGatewaySafelyAsync();
+            else
+                await AdoptServiceManagedSessionAsync();
             RunBackground(AutoSelectDetectedWslDistroAsync, "WSL distro auto-select failed");
         });
         await ShowCompletedAppUpdateNoticeAsync();
@@ -139,7 +142,9 @@ public partial class MainWindow : Window
         {
             var result = await _coreServices.App.ShutdownApplication.BeginShutdownAsync(
                 new AppShutdownApplicationRequest(
-                    _sessions.Snapshots().Count(session => session.IsRunning),
+                    // Сессии с ProcessId = 0 — «призраки» моделей, которыми управляет
+                    // служба: при закрытии GUI их останавливать/подтверждать не нужно.
+                    _sessions.Snapshots().Count(session => session.IsRunning && session.ProcessId > 0),
                     _appServices?.HuggingFace.ActiveDownloadCount ?? 0,
                     controlShutdownConfirmed),
                 new AppShutdownApplicationActions(

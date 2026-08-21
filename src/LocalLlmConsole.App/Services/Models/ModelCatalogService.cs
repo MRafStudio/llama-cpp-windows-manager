@@ -117,6 +117,13 @@ public sealed partial class ModelCatalogService
             var appOwned = existingForPath?.FirstOrDefault(model => model.Ownership == OwnershipKind.AppOwned);
             if (appOwned is not null)
             {
+                var expectedId = ModelIdForPath(scopeRoot, appOwned.ModelPath);
+                if (!string.Equals(appOwned.Id, expectedId, StringComparison.OrdinalIgnoreCase))
+                {
+                    await _store.DeleteModelAsync(appOwned.Id);
+                    appOwned = appOwned with { Id = expectedId };
+                    await _store.UpsertModelAsync(appOwned);
+                }
                 await RemoveDuplicateModelRecordsForPathAsync(appOwned);
                 await SeedLegacyLaunchSettingsAsync(appOwned);
                 records.Add(appOwned);
@@ -237,9 +244,7 @@ public sealed partial class ModelCatalogService
         var seed = RelativePathOrFullPath(scopeRoot, fullPath);
         seed = Path.ChangeExtension(seed, null) ?? seed;
         var safe = SafeId(seed);
-        var hash = ShortHash(fullPath);
-        var safePrefix = safe[..Math.Min(86, safe.Length)];
-        return $"{safePrefix}-{hash}";
+        return safe[..Math.Min(86, safe.Length)];
     }
 
     private static string RelativePathOrFullPath(string scopeRoot, string modelPath)
@@ -252,12 +257,6 @@ public sealed partial class ModelCatalogService
     }
 
     private static string NormalizePath(string path) => Path.GetFullPath(path);
-
-    private static string ShortHash(string value)
-    {
-        var bytes = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(value.ToLowerInvariant()));
-        return Convert.ToHexString(bytes)[..8].ToLowerInvariant();
-    }
 
     internal static string SafeId(string value)
     {

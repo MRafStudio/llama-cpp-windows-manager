@@ -36,7 +36,7 @@
   </ItemGroup>
 
   <Target Name="CopyServiceExe" AfterTargets="Build">
-    <Copy SourceFiles="$(MSBuildProjectDirectory)\..\LocalLlmConsole.Service\bin\$(Configuration)\net10.0-windows\win-x64\LocalLlmConsole.Service.exe"
+    <Copy SourceFiles="$(MSBuildProjectDirectory)\..\LocalLlmConsole.Service\bin\$(Configuration)\net10.0-windows\win-x64\LocalLlmConsole.Service.exe;$(MSBuildProjectDirectory)\..\LocalLlmConsole.Service\bin\$(Configuration)\net10.0-windows\win-x64\LocalLlmConsole.Service.dll"
           DestinationFolder="$(OutDir)"
           Condition="Exists('$(MSBuildProjectDirectory)\..\LocalLlmConsole.Service\bin\$(Configuration)\net10.0-windows\win-x64\LocalLlmConsole.Service.exe')" />
   </Target>
