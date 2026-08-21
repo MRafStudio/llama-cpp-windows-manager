@@ -16,7 +16,9 @@ loopback API управления внутри запущенного Manager, �
   во ВСЕХ локализациях обязаны содержать суффикс `(ext)` — пользователь должен
   видеть, что это расширенная версия, а не оригинал. Не терять при имплементации
   апстрима!
-- **Бумпание версии — ВСЕ места**: при смене версии обновлять ОБЯЗАТЕЛЬНО:
+- **Схема версий (ext)**: от базы 2.3.2 версии идут **2.3.2.1 → 2.3.2.2 → ...**
+  (инкремент четвёртого числа). НЕ своевольничать с нумерацией — только по
+  указанию пользователя. Все релизы — с пометкой (ext).
   `LocalLlmConsole.App.csproj` (Version/AssemblyVersion/FileVersion/InformationalVersion),
   **`LocalLlmConsole.Service.csproj` (Version)**,
   `MainWindow.xaml` (Title), `installer/LlamaCppWindowsManager.iss` (AppVersion),
