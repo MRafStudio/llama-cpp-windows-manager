@@ -15,9 +15,9 @@ AppId={{5C6D440C-0EE0-4FEC-8D86-6AADEAA24620}
 AppName={#AppName}
 AppVersion={#AppVersion}
 AppPublisher=llama.cpp Windows Manager contributors
-AppPublisherURL=https://github.com/alekk89/llama-cpp-windows-manager
-AppSupportURL=https://github.com/alekk89/llama-cpp-windows-manager/issues
-AppUpdatesURL=https://github.com/alekk89/llama-cpp-windows-manager/releases
+AppPublisherURL=https://github.com/MRafStudio/llama-cpp-windows-manager
+AppSupportURL=https://github.com/MRafStudio/llama-cpp-windows-manager/issues
+AppUpdatesURL=https://github.com/MRafStudio/llama-cpp-windows-manager/releases
 DefaultDirName={code:GetDefaultDirName}
 DefaultGroupName={#AppName}
 UsePreviousAppDir=yes
@@ -56,6 +56,8 @@ Source: "{#SourceDir}\llwmctl.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceDir}\AGENTS.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceDir}\agent.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceDir}\docs\CONTROL_API.md"; DestDir: "{app}\docs"; Flags: ignoreversion
+Source: "{#SourceDir}\docs\LLAMAMANAGER-SERVICE.md"; DestDir: "{app}\docs"; Flags: ignoreversion
+Source: "{#SourceDir}\LocalLlmConsole.Service.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceDir}\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceDir}\THIRD-PARTY-NOTICES.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceDir}\licenses\*"; DestDir: "{app}\licenses"; Flags: ignoreversion recursesubdirs createallsubdirs
