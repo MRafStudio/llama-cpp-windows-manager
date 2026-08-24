@@ -260,30 +260,35 @@ public sealed partial class AppUpdateService
         if (!File.Exists(updaterPath))
             throw new InvalidOperationException($"Updater not found next to the application: {updaterPath}");
         var targetDir = AppContext.BaseDirectory;
-        var args = new List<string>
-        {
-            $"--version \"{update.LatestVersion}\"",
-            $"--target-dir \"{targetDir}\"",
-            $"--parent-pid {currentProcessId}",
-            $"--app-asset-url \"{update.AssetUrl}\"",
-            $"--app-sha256-url \"{update.ChecksumAssetUrl}\""
-        };
-        if (IsServiceInstalled(WindowsServiceManager.ServiceName))
-        {
-            args.Add($"--service-name {WindowsServiceManager.ServiceName}");
-            if (!string.IsNullOrWhiteSpace(update.ServiceAssetUrl))
-            {
-                args.Add($"--service-asset-url \"{update.ServiceAssetUrl}\"");
-                args.Add($"--service-sha256-url \"{update.ServiceChecksumAssetUrl}\"");
-            }
-        }
         var psi = new ProcessStartInfo
         {
             FileName = updaterPath,
-            UseShellExecute = true,
-            WorkingDirectory = targetDir,
-            Arguments = string.Join(" ", args)
+            UseShellExecute = false,
+            WorkingDirectory = targetDir
         };
+        // ArgumentList экранирует аргументы сам (BaseDirectory заканчивается на '\').
+        psi.ArgumentList.Add("--version");
+        psi.ArgumentList.Add(update.LatestVersion);
+        psi.ArgumentList.Add("--target-dir");
+        psi.ArgumentList.Add(targetDir);
+        psi.ArgumentList.Add("--parent-pid");
+        psi.ArgumentList.Add(currentProcessId.ToString());
+        psi.ArgumentList.Add("--app-asset-url");
+        psi.ArgumentList.Add(update.AssetUrl);
+        psi.ArgumentList.Add("--app-sha256-url");
+        psi.ArgumentList.Add(update.ChecksumAssetUrl);
+        if (IsServiceInstalled(WindowsServiceManager.ServiceName))
+        {
+            psi.ArgumentList.Add("--service-name");
+            psi.ArgumentList.Add(WindowsServiceManager.ServiceName);
+            if (!string.IsNullOrWhiteSpace(update.ServiceAssetUrl))
+            {
+                psi.ArgumentList.Add("--service-asset-url");
+                psi.ArgumentList.Add(update.ServiceAssetUrl);
+                psi.ArgumentList.Add("--service-sha256-url");
+                psi.ArgumentList.Add(update.ServiceChecksumAssetUrl);
+            }
+        }
         _startProcess(psi);
     }
 
