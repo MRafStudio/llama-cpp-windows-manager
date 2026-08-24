@@ -249,6 +249,44 @@ public sealed partial class AppUpdateService
         _startProcess(psi);
     }
 
+    /// <summary>
+    /// Запускает автономный Updater-процесс (LocalLlmConsole.Updater.exe),
+    /// который сам скачает обновление в temp, запросит UAC при наличии службы,
+    /// остановит/заменит/запустит службу и приложение, и в финале запустит GUI.
+    /// </summary>
+    public void StartUpdaterProcess(AppUpdateInfo update, int currentProcessId)
+    {
+        var updaterPath = Path.Combine(AppContext.BaseDirectory, "LocalLlmConsole.Updater.exe");
+        if (!File.Exists(updaterPath))
+            throw new InvalidOperationException($"Updater not found next to the application: {updaterPath}");
+        var targetDir = AppContext.BaseDirectory;
+        var args = new List<string>
+        {
+            $"--version \"{update.LatestVersion}\"",
+            $"--target-dir \"{targetDir}\"",
+            $"--parent-pid {currentProcessId}",
+            $"--app-asset-url \"{update.AssetUrl}\"",
+            $"--app-sha256-url \"{update.ChecksumAssetUrl}\""
+        };
+        if (IsServiceInstalled(WindowsServiceManager.ServiceName))
+        {
+            args.Add($"--service-name {WindowsServiceManager.ServiceName}");
+            if (!string.IsNullOrWhiteSpace(update.ServiceAssetUrl))
+            {
+                args.Add($"--service-asset-url \"{update.ServiceAssetUrl}\"");
+                args.Add($"--service-sha256-url \"{update.ServiceChecksumAssetUrl}\"");
+            }
+        }
+        var psi = new ProcessStartInfo
+        {
+            FileName = updaterPath,
+            UseShellExecute = true,
+            WorkingDirectory = targetDir,
+            Arguments = string.Join(" ", args)
+        };
+        _startProcess(psi);
+    }
+
     public static async Task<InstalledUpdateNotice?> TryConsumeInstalledNoticeAsync(string workspaceRoot, CancellationToken cancellationToken = default)
     {
         var path = PendingNoticePath(workspaceRoot);

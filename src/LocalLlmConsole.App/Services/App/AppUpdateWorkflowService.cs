@@ -37,11 +37,11 @@ public sealed class AppUpdateWorkflowService
         int currentProcessId,
         CancellationToken cancellationToken = default)
     {
-        using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(5));
-        using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token);
-        var plan = await _updates.StageInstallAsync(update, _workspaceRoot, currentExecutablePath, linked.Token);
-        _updates.StartInstaller(plan, currentProcessId);
-        return "Update staged. Closing to install...";
+        // Автономный Updater-процесс сам скачает файлы в temp, запросит UAC
+        // (если есть служба), остановит/заменит/запустит службу и приложение,
+        // а в финале запустит GUI. Приложение здесь больше ничего не качает.
+        _updates.StartUpdaterProcess(update, currentProcessId);
+        return "Update started. Closing to install...";
     }
 
     public async Task<InstalledUpdateNotice?> TryConsumeInstalledNoticeAsync(CancellationToken cancellationToken = default)
