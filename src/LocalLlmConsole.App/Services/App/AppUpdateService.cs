@@ -250,11 +250,12 @@ public sealed partial class AppUpdateService
     }
 
     /// <summary>
-    /// Запускает автономный Updater-процесс (LocalLlmConsole.Updater.exe),
-    /// который сам скачает обновление в temp, запросит UAC при наличии службы,
-    /// остановит/заменит/запустит службу и приложение, и в финале запустит GUI.
+    /// Запускает автономный Updater-процесс (LocalLlmConsole.Updater.exe).
+    /// Файлы УЖЕ скачаны и проверены GUI — Updater только применяет их:
+    /// UAC (если есть служба), KILL родителя, стоп/замена/старт службы,
+    /// автозапуск приложения. Запускается скрыто (без консольного окна).
     /// </summary>
-    public void StartUpdaterProcess(AppUpdateInfo update, int currentProcessId)
+    public void StartUpdaterProcess(AppUpdateInfo update, UpdateDownloadResult files, int currentProcessId)
     {
         var updaterPath = Path.Combine(AppContext.BaseDirectory, "LocalLlmConsole.Updater.exe");
         if (!File.Exists(updaterPath))
@@ -264,6 +265,8 @@ public sealed partial class AppUpdateService
         {
             FileName = updaterPath,
             UseShellExecute = false,
+            CreateNoWindow = true,
+            WindowStyle = ProcessWindowStyle.Hidden,
             WorkingDirectory = targetDir
         };
         // ArgumentList экранирует аргументы сам (BaseDirectory заканчивается на '\').
@@ -273,23 +276,108 @@ public sealed partial class AppUpdateService
         psi.ArgumentList.Add(targetDir);
         psi.ArgumentList.Add("--parent-pid");
         psi.ArgumentList.Add(currentProcessId.ToString());
-        psi.ArgumentList.Add("--app-asset-url");
-        psi.ArgumentList.Add(update.AssetUrl);
-        psi.ArgumentList.Add("--app-sha256-url");
-        psi.ArgumentList.Add(update.ChecksumAssetUrl);
+        psi.ArgumentList.Add("--app-file");
+        psi.ArgumentList.Add(files.AppFilePath);
+        if (!string.IsNullOrWhiteSpace(files.ServiceFilePath))
+        {
+            psi.ArgumentList.Add("--service-file");
+            psi.ArgumentList.Add(files.ServiceFilePath);
+        }
         if (IsServiceInstalled(WindowsServiceManager.ServiceName))
         {
             psi.ArgumentList.Add("--service-name");
             psi.ArgumentList.Add(WindowsServiceManager.ServiceName);
-            if (!string.IsNullOrWhiteSpace(update.ServiceAssetUrl))
-            {
-                psi.ArgumentList.Add("--service-asset-url");
-                psi.ArgumentList.Add(update.ServiceAssetUrl);
-                psi.ArgumentList.Add("--service-sha256-url");
-                psi.ArgumentList.Add(update.ServiceChecksumAssetUrl);
-            }
         }
         _startProcess(psi);
+    }
+
+    /// <summary>Результат скачивания: пути к проверенным файлам (temp).</summary>
+    public sealed record UpdateDownloadResult(string AppFilePath, string? ServiceFilePath);
+
+    /// <summary>
+    /// Скачивает App (и Service, если служба установлена) в %TEMP%\LlamaUpdater\<version>
+    /// с прогрессом, проверяет SHA-256. При ошибке — исключение (GUI остаётся работать).
+    /// </summary>
+    public async Task<UpdateDownloadResult> DownloadAndVerifyAsync(
+        AppUpdateInfo update,
+        IProgress<UpdateProgressState>? progress,
+        CancellationToken cancellationToken = default)
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), "LlamaUpdater", update.LatestVersion);
+        Directory.CreateDirectory(tempDir);
+
+        var appPath = Path.Combine(tempDir, "LlamaCppWindowsManager.exe");
+        progress?.Report(new UpdateProgressState(-1, "Скачивание приложения..."));
+        await DownloadAssetWithProgressAsync(update.AssetUrl, appPath, "приложения", progress, cancellationToken);
+        var appSha = await FetchSha256Async(update.ChecksumAssetUrl, cancellationToken)
+            ?? throw new InvalidOperationException("Не удалось получить контрольную сумму приложения.");
+        VerifySha256(appPath, appSha, "приложения");
+
+        string? servicePath = null;
+        if (IsServiceInstalled(WindowsServiceManager.ServiceName))
+        {
+            if (string.IsNullOrWhiteSpace(update.ServiceAssetUrl))
+                throw new InvalidOperationException(
+                    "The release does not include LocalLlmConsole.Service.exe. Refusing to stage an incomplete update.");
+            servicePath = Path.Combine(tempDir, "LocalLlmConsole.Service.exe");
+            progress?.Report(new UpdateProgressState(-1, "Скачивание службы..."));
+            await DownloadAssetWithProgressAsync(update.ServiceAssetUrl, servicePath, "службы", progress, cancellationToken);
+            var serviceSha = await FetchSha256Async(update.ServiceChecksumAssetUrl, cancellationToken)
+                ?? throw new InvalidOperationException("Не удалось получить контрольную сумму службы.");
+            VerifySha256(servicePath, serviceSha, "службы");
+        }
+
+        progress?.Report(new UpdateProgressState(100, "Загрузка завершена, всё проверено."));
+        return new UpdateDownloadResult(appPath, servicePath);
+    }
+
+    private async Task DownloadAssetWithProgressAsync(
+        string url, string targetPath, string what, IProgress<UpdateProgressState>? progress, CancellationToken ct)
+    {
+        using var response = await _http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
+        response.EnsureSuccessStatusCode();
+        var total = response.Content.Headers.ContentLength ?? 0;
+        await using var source = await response.Content.ReadAsStreamAsync(ct);
+        await using var dest = File.Create(targetPath);
+        var buffer = new byte[81920];
+        long read = 0;
+        int n;
+        while ((n = await source.ReadAsync(buffer.AsMemory(0, buffer.Length), ct)) > 0)
+        {
+            await dest.WriteAsync(buffer.AsMemory(0, n), ct);
+            read += n;
+            if (total > 0)
+            {
+                var percent = read * 100.0 / total;
+                var text = total >= 1024 * 1024
+                    ? $"Скачивание {what}: {read / 1024 / 1024} МБ из {total / 1024 / 1024} МБ ({percent:0}%)"
+                    : $"Скачивание {what}: {read / 1024} КБ из {total / 1024} КБ";
+                progress?.Report(new UpdateProgressState(percent, text));
+            }
+        }
+    }
+
+    private async Task<string?> FetchSha256Async(string sha256Url, CancellationToken ct)
+    {
+        try
+        {
+            var text = await _http.GetStringAsync(sha256Url, ct);
+            var match = System.Text.RegularExpressions.Regex.Match(text, @"[0-9a-fA-F]{64}");
+            return match.Success ? match.Value : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static void VerifySha256(string path, string expected, string what)
+    {
+        using var stream = File.OpenRead(path);
+        var actual = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(stream));
+        if (!actual.Equals(expected, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException(
+                $"SHA-256 не совпадает для {what}: ожидалось {expected}, получено {actual}. Обновление отменено.");
     }
 
     public static async Task<InstalledUpdateNotice?> TryConsumeInstalledNoticeAsync(string workspaceRoot, CancellationToken cancellationToken = default)

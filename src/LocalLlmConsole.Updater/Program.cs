@@ -1,6 +1,4 @@
 using System.Diagnostics;
-using System.Net.Http;
-using System.Security.Cryptography;
 using System.Security.Principal;
 using System.ServiceProcess;
 using System.Text;
@@ -24,16 +22,12 @@ internal static class Program
         public string TargetDir = "";
         public string ServiceName = "";
         public int ParentPid;
-        public string AppAssetUrl = "";
-        public string AppSha256Url = "";
-        public string ServiceAssetUrl = "";
-        public string ServiceSha256Url = "";
+        public string AppFile = "";        // путь к УЖЕ скачанному GUI проверенному exe
+        public string ServiceFile = "";    // путь к УЖЕ скачанному проверенному exe службы (если есть)
         public bool ShowHelp;
     }
 
-    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromMinutes(60) };
     private static string LogPath = "";
-
     private static int Main(string[] args)
     {
         var options = ParseArgs(args);
@@ -45,14 +39,32 @@ internal static class Program
         {
             if (options.ShowHelp) { PrintHelp(); return 0; }
 
-            if (string.IsNullOrWhiteSpace(options.AppAssetUrl) || string.IsNullOrWhiteSpace(options.TargetDir))
+            if (string.IsNullOrWhiteSpace(options.AppFile) || string.IsNullOrWhiteSpace(options.TargetDir))
             {
-                Log("Ошибка: не указаны --app-asset-url или --target-dir.");
+                Log("Ошибка: не указаны --app-file или --target-dir.");
                 PrintHelp();
                 return 3;
             }
 
-            // 1. Повышение прав: нужно только если указана служба.
+            // 1. Проверяем, что скачанные GUI файлы на месте.
+            var appTemp = options.AppFile;
+            if (!File.Exists(appTemp) || new FileInfo(appTemp).Length == 0)
+            {
+                Log($"Ошибка: файл приложения не найден или пуст: {appTemp}");
+                return 4;
+            }
+            string? serviceTemp = null;
+            if (!string.IsNullOrWhiteSpace(options.ServiceFile))
+            {
+                if (!File.Exists(options.ServiceFile) || new FileInfo(options.ServiceFile).Length == 0)
+                {
+                    Log($"Ошибка: файл службы не найден или пуст: {options.ServiceFile}");
+                    return 4;
+                }
+                serviceTemp = options.ServiceFile;
+            }
+
+            // 2. Повышение прав: нужно только если указана служба.
             if (!string.IsNullOrWhiteSpace(options.ServiceName) && !IsAdministrator())
             {
                 Log($"Требуется повышение прав (служба {options.ServiceName}). Запускаю UAC...");
@@ -65,24 +77,8 @@ internal static class Program
                 return 0;
             }
 
-            // 2. Ждём закрытия GUI максимум 10 секунд, потом KILL.
+            // 3. Ждём закрытия GUI максимум 10 секунд, потом KILL.
             WaitForParentExit(options.ParentPid);
-
-            var tempDir = Path.Combine(Path.GetTempPath(), "LlamaUpdater", options.Version);
-            Directory.CreateDirectory(tempDir);
-
-            // 3. Загрузка + проверка SHA-256 (уже скачано и совпадает — не качаем).
-            var appTemp = DownloadVerifiedAsync(
-                options.AppAssetUrl, options.AppSha256Url,
-                Path.Combine(tempDir, "LlamaCppWindowsManager.exe"), "приложение").GetAwaiter().GetResult();
-
-            string? serviceTemp = null;
-            if (!string.IsNullOrWhiteSpace(options.ServiceAssetUrl) && !string.IsNullOrWhiteSpace(options.ServiceSha256Url))
-            {
-                serviceTemp = DownloadVerifiedAsync(
-                    options.ServiceAssetUrl, options.ServiceSha256Url,
-                    Path.Combine(tempDir, "LocalLlmConsole.Service.exe"), "служба").GetAwaiter().GetResult();
-            }
 
             // 4. Останавливаем службу (если указана и запущена).
             var serviceWasRunning = false;
@@ -109,12 +105,28 @@ internal static class Program
             if (File.Exists(appPath))
             {
                 Log($"Запускаю приложение: {appPath}");
-                Process.Start(new ProcessStartInfo
+                // Запуск через explorer.exe: (1) снимает админ-токен (приложение не
+                // должно работать от имени администратора), (2) окно появляется на
+                // переднем плане как при обычном запуске пользователем.
+                try
                 {
-                    FileName = appPath,
-                    WorkingDirectory = options.TargetDir,
-                    UseShellExecute = false
-                });
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = "explorer.exe",
+                        Arguments = $"\"{appPath}\"",
+                        UseShellExecute = true
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Log($"Запуск через explorer не удался ({ex.Message}) — запускаю напрямую.");
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = appPath,
+                        WorkingDirectory = options.TargetDir,
+                        UseShellExecute = true
+                    });
+                }
             }
 
             Log("Обновление завершено успешно.");
@@ -139,10 +151,8 @@ internal static class Program
                 case "--target-dir" when i + 1 < args.Length: o.TargetDir = args[++i]; break;
                 case "--service-name" when i + 1 < args.Length: o.ServiceName = args[++i]; break;
                 case "--parent-pid" when i + 1 < args.Length && int.TryParse(args[++i], out var pid): o.ParentPid = pid; break;
-                case "--app-asset-url" when i + 1 < args.Length: o.AppAssetUrl = args[++i]; break;
-                case "--app-sha256-url" when i + 1 < args.Length: o.AppSha256Url = args[++i]; break;
-                case "--service-asset-url" when i + 1 < args.Length: o.ServiceAssetUrl = args[++i]; break;
-                case "--service-sha256-url" when i + 1 < args.Length: o.ServiceSha256Url = args[++i]; break;
+                case "--app-file" when i + 1 < args.Length: o.AppFile = args[++i]; break;
+                case "--service-file" when i + 1 < args.Length: o.ServiceFile = args[++i]; break;
             }
         }
         return o;
@@ -151,16 +161,14 @@ internal static class Program
     private static void PrintHelp()
     {
         Console.WriteLine("""
-            LocalLlmConsole.Updater — автономное обновление приложения и службы.
+            LocalLlmConsole.Updater — автономное применение скачанного обновления.
             Параметры:
-              --version <v>              версия обновления (для каталога temp)
+              --version <v>              версия обновления (информационно)
               --target-dir <path>        каталог установки (где лежит LlamaCppWindowsManager.exe)
               --service-name <name>      имя службы (если установлена; требует UAC)
               --parent-pid <pid>         PID приложения, которое нужно дождаться/убить
-              --app-asset-url <url>      URL скачиваемого exe приложения
-              --app-sha256-url <url>     URL файла .sha256 приложения
-              --service-asset-url <url>  URL скачиваемого exe службы (необязательно)
-              --service-sha256-url <url> URL файла .sha256 службы (необязательно)
+              --app-file <path>          путь к скачанному и проверенному exe приложения
+              --service-file <path>      путь к скачанному и проверенному exe службы (необязательно)
             """);
     }
 
@@ -228,53 +236,6 @@ internal static class Program
                 Log($"Не удалось убить процесс {parentPid}: {ex.Message}");
             }
         }
-    }
-
-    private static async Task<string> DownloadVerifiedAsync(string assetUrl, string sha256Url, string targetPath, string what)
-    {
-        if (File.Exists(targetPath) && new FileInfo(targetPath).Length > 0)
-        {
-            var expected = await FetchSha256Async(sha256Url);
-            if (expected != null && Sha256Of(targetPath).Equals(expected, StringComparison.OrdinalIgnoreCase))
-            {
-                Log($"{what}: уже скачано в temp, хэш совпадает — не качаю заново.");
-                return targetPath;
-            }
-        }
-
-        Log($"{what}: скачиваю {assetUrl}...");
-        var bytes = await Http.GetByteArrayAsync(assetUrl);
-        await File.WriteAllBytesAsync(targetPath, bytes);
-        Log($"{what}: скачано {bytes.Length / 1024 / 1024} МБ.");
-
-        var expectedHash = await FetchSha256Async(sha256Url);
-        if (expectedHash == null) throw new InvalidOperationException($"Не удалось получить .sha256 для {what}.");
-        var actualHash = Sha256Of(targetPath);
-        if (!actualHash.Equals(expectedHash, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException($"SHA-256 не совпадает для {what}: ожидалось {expectedHash}, получено {actualHash}. Обновление отменено.");
-
-        Log($"{what}: SHA-256 подтверждён.");
-        return targetPath;
-    }
-
-    private static async Task<string?> FetchSha256Async(string sha256Url)
-    {
-        try
-        {
-            var text = await Http.GetStringAsync(sha256Url);
-            var match = System.Text.RegularExpressions.Regex.Match(text, @"[0-9a-fA-F]{64}");
-            return match.Success ? match.Value : null;
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private static string Sha256Of(string path)
-    {
-        using var stream = File.OpenRead(path);
-        return Convert.ToHexString(SHA256.HashData(stream));
     }
 
     private static bool StopService(string serviceName)

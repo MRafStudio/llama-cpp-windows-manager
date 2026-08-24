@@ -37,10 +37,22 @@ public sealed class AppUpdateWorkflowService
         int currentProcessId,
         CancellationToken cancellationToken = default)
     {
-        // Автономный Updater-процесс сам скачает файлы в temp, запросит UAC
-        // (если есть служба), остановит/заменит/запустит службу и приложение,
-        // а в финале запустит GUI. Приложение здесь больше ничего не качает.
-        _updates.StartUpdaterProcess(update, currentProcessId);
+        return await DownloadAndStartInstallAsync(update, null, currentExecutablePath, currentProcessId, cancellationToken);
+    }
+
+    /// <summary>
+    /// Скачивает обновление с прогрессом и запускает автономный Updater-процесс.
+    /// При любой ошибке скачивания/проверки — исключение, GUI продолжает работать.
+    /// </summary>
+    public async Task<string> DownloadAndStartInstallAsync(
+        AppUpdateInfo update,
+        IProgress<UpdateProgressState>? progress,
+        string? currentExecutablePath,
+        int currentProcessId,
+        CancellationToken cancellationToken = default)
+    {
+        var files = await _updates.DownloadAndVerifyAsync(update, progress, cancellationToken);
+        _updates.StartUpdaterProcess(update, files, currentProcessId);
         return "Update started. Closing to install...";
     }
 

@@ -1,3 +1,5 @@
+using LocalLlmConsole;
+
 namespace LocalLlmConsole.Services;
 
 public enum AppUpdateApplicationPromptKind
@@ -49,7 +51,7 @@ public sealed record AppUpdateInstallApplicationActions(
     Func<AppUpdateApplicationPrompt, bool> ConfirmPrompt,
     Action<AppUpdateApplicationPrompt> NotifyPrompt,
     Func<string, Func<Task>, Task> RunBusyAsync,
-    Func<AppUpdateInfo, string?, int, CancellationToken, Task<string>> StageAndStartInstallAsync,
+    Func<AppUpdateInfo, IProgress<UpdateProgressState>, string?, int, CancellationToken, Task<string>> DownloadAndStartInstallAsync,
     Action<string> SetStatus,
     Action Close);
 
@@ -144,18 +146,43 @@ public sealed class AppUpdateApplicationService
                 return AppUpdateInstallApplicationOutcome.Declined;
         }
 
-        await actions.RunBusyAsync("Preparing app update...", async () =>
+        await InstallWithProgressAsync(request, actions, cancellationToken);
+        return AppUpdateInstallApplicationOutcome.Started;
+    }
+
+    /// <summary>
+    /// Скачивание с красивым окном прогресса; при ошибке — GUI остаётся работать.
+    /// Updater запускается только после 100% успешной загрузки и проверки.
+    /// </summary>
+    private static async Task InstallWithProgressAsync(
+        AppUpdateInstallApplicationRequest request,
+        AppUpdateInstallApplicationActions actions,
+        CancellationToken cancellationToken)
+    {
+        var window = new UpdateProgressWindow("Обновление приложения");
+        try
         {
-            var status = await actions.StageAndStartInstallAsync(
+            window.Show();
+            var progress = new Progress<UpdateProgressState>(state => window.SetState(state));
+            var status = await actions.DownloadAndStartInstallAsync(
                 request.Update,
+                progress,
                 request.CurrentExecutablePath,
                 request.CurrentProcessId,
                 cancellationToken);
             actions.SetStatus(status);
-        });
-
-        actions.Close();
-        return AppUpdateInstallApplicationOutcome.Started;
+            window.Close();
+            actions.Close();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+        {
+            try { window.Close(); }
+            catch { /* окно могло уже закрыться */ }
+            actions.NotifyPrompt(new AppUpdateApplicationPrompt(
+                "Update failed",
+                $"Не удалось подготовить обновление: {ex.Message}\n\nПриложение продолжает работать.",
+                AppUpdateApplicationPromptKind.Warning));
+        }
     }
 
     private static void Validate(AppUpdateCheckApplicationActions actions)
@@ -180,7 +207,7 @@ public sealed class AppUpdateApplicationService
         ArgumentNullException.ThrowIfNull(actions.ConfirmPrompt);
         ArgumentNullException.ThrowIfNull(actions.NotifyPrompt);
         ArgumentNullException.ThrowIfNull(actions.RunBusyAsync);
-        ArgumentNullException.ThrowIfNull(actions.StageAndStartInstallAsync);
+        ArgumentNullException.ThrowIfNull(actions.DownloadAndStartInstallAsync);
         ArgumentNullException.ThrowIfNull(actions.SetStatus);
         ArgumentNullException.ThrowIfNull(actions.Close);
     }

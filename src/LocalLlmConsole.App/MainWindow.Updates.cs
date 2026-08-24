@@ -75,8 +75,9 @@ public partial class MainWindow
             ConfirmAppUpdatePrompt,
             NotifyAppUpdatePrompt,
             RunAsync,
-            async (requestedUpdate, processPath, processId, token) =>
-                await _coreServices.App.AppUpdateWorkflow.StageAndStartInstallAsync(requestedUpdate, processPath, processId, token),
+            async (requestedUpdate, progress, processPath, processId, token) =>
+                await _coreServices.App.AppUpdateWorkflow.DownloadAndStartInstallAsync(
+                    requestedUpdate, progress, processPath, processId, token),
             SetStatus,
             Close);
 
