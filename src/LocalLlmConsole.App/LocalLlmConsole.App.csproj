@@ -12,8 +12,8 @@
     <Product>llama.cpp Windows Manager</Product>
     <RepositoryUrl>https://github.com/MRafStudio/llama-cpp-windows-manager</RepositoryUrl>
     <Version>2.3.2.2</Version>
-    <AssemblyVersion>2.3.2</AssemblyVersion>
-    <FileVersion>2.3.2</FileVersion>
+    <AssemblyVersion>2.3.2.2</AssemblyVersion>
+    <FileVersion>2.3.2.2</FileVersion>
     <InformationalVersion>v2.3.2.2</InformationalVersion>
     <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
