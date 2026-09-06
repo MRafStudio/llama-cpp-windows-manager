@@ -45,12 +45,16 @@ loopback API управления внутри запущенного Manager, �
 - Этот список правил будет дополняться по мере необходимости — он обязателен
   для любого агента, работающего в репозитории.
 
-## ⚠️ Релиз: ЧИСТЫЙ дистрибутив — только publish-app.ps1!
+## ⚠️ Релиз: ЧИСТЫЙ дистрибутив — ЕДИНАЯ точка `scripts/build-ext-release.ps1`!
 
-- **Сборку релиза делать ТОЛЬКО через `scripts/publish-app.ps1`** — он сам:
-  чистит PublishDir, собирает App/llwmctl/Service **со сжатием**
-  (`EnableCompressionInSingleFile=true`!), копирует доки/лицензии, удаляет
-  **все `*.pdb`** и генерирует zip + sha256.
+- **Сборку релиза делать ТОЛЬКО через `scripts/build-ext-release.ps1`**
+  (см. «Релизный цикл» п.2) — НЕ руками и НЕ вендорским `publish-app.ps1`
+  в одиночку: он не собирает Updater и не делает zip «ровно 4 exe».
+- `build-ext-release.ps1` внутри зовёт вендорский `publish-app.ps1`
+  (App/llwmctl/Service со сжатием, доки, **чистка всех `*.pdb`**), затем
+  публикует Updater, зачищает мусор (pdb/runtimeconfig/deps/hashes.txt),
+  пересчитывает sha256 для 4 exe, делает zip из 4 exe и зовёт
+  `build-installer.ps1 -SkipPublish` (Setup).
 - НИКОГДА не собирать вручную `dotnet publish` в dist-папку и не делать
   `Compress-Archive` из неё: туда попадают `*.pdb`, `*.runtimeconfig.json`,
   временные `hashes.txt`, доки — и всё это уезжает в релизный zip!
@@ -175,19 +179,31 @@ record `AppUpdateInfo` (AppUpdateService.cs) рос: добавились Servic
 1. **Бамп версии** — инкремент 4-го числа (2.3.2.x), grep по старой версии по
    ВСЕМ 6 местам (см. «Обязательные правила»); бейдж `(ext)` в AppVersionLabel
    и Title обязателен.
-2. Release-сборка ТОЛЬКО single-file флагами:
-   `-p:PublishSingleFile=true -p:SelfContained=true
-   -p:IncludeNativeLibrariesForSelfExtract=true` (иначе DLL-мусор). Три проекта:
-   App, Service, Updater + `llwmctl.exe` (ControlCli) для Setup.
-3. Пересчитать `.sha256` для каждого ассета; zip полного набора; sbom
-   (`scripts/new-sbom.ps1 -Version ...`); Setup через Inno
-   (`scripts/build-installer.ps1`), Setup ОБЯЗАН содержать `LocalLlmConsole.Updater.exe`.
+2. **ЕДИНАЯ ТОЧКА СБОРКИ — `scripts/build-ext-release.ps1`** (НЕ собирать
+   руками `dotnet publish` в dist!):
+   ```
+   powershell -ExecutionPolicy Bypass -File scripts/build-ext-release.ps1
+   ```
+   Скрипт сам: зовёт вендорский `publish-app.ps1` (App + llwmctl + Service
+   single-file со сжатием + доки/лицензии + sbom, чистит *.pdb), затем
+   публикует **Updater** (вендорский publish-app.ps1 про него НЕ знает!),
+   зачищает мусор (pdb/runtimeconfig/deps/hashes.txt), пересчитывает sha256
+   для всех 4 exe, делает **zip РОВНО из 4 exe** (эталон 2.3.2.8!) и зовёт
+   `build-installer.ps1 -SkipPublish` для Setup. Опции: `-InnoSetupPath`,
+   `-SkipInstaller`.
+3. **ZIP релиза = РОВНО 4 exe**: `LlamaCppWindowsManager.exe`,
+   `LocalLlmConsole.Service.exe`, `LocalLlmConsole.Updater.exe`, `llwmctl.exe`
+   (~37.6 МБ со сжатием!). Ни pdb, ни доков, ни sha256-файлов внутри zip.
+   Скрипт сам это проверяет (ровно 4 записи) — но перед заливкой всё равно
+   контроль: `unzip -l dist/LlamaCppWindowsManager-win-x64.zip` → 4 файла.
 4. Git: commit → push → тег `2.3.2.X` **на HEAD** (тег на старый коммит даёт
    релизу старую дату и уводит его вниз списка!) → push тега → GitHub Release
    **«2.3.2.X (ext)»** → загрузка 10 ассетов (5 файлов + 5 .sha256):
    App, Service, Updater, win-x64.zip, Setup. Проверить: 10/10, порядок релизов
    сверху вниз, ни один ассет не пропал (ошибки публикации «съедают» файлы тихо).
 5. Версии ассетов проверить через FileVersion (все exe = 2.3.2.X).
+6. Перезаливка ассетов без бампа: DELETE `releases/assets/{id}` → залить новые
+   (HTTP 201); Setup пересобирать ПОСЛЕ любой пересборки exe.
 
 - Используйте `llwmctl` для операций с живым Manager. Не редактируйте базу данных SQLite,
   не открывайте API управления и не автоматизируйте элементы управления WPF. Не запускайте `llama-server`
