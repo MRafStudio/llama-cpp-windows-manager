@@ -8,10 +8,10 @@
     <RootNamespace>LocalLlmConsole.Service</RootNamespace>
     <AssemblyTitle>llama.cpp Server Service</AssemblyTitle>
     <Product>llama.cpp Server Service</Product>
-    <Version>2.3.2.8</Version>
-    <AssemblyVersion>2.3.2.8</AssemblyVersion>
-    <FileVersion>2.3.2.8</FileVersion>
-    <InformationalVersion>v2.3.2.8</InformationalVersion>
+    <Version>2.3.2.9</Version>
+    <AssemblyVersion>2.3.2.9</AssemblyVersion>
+    <FileVersion>2.3.2.9</FileVersion>
+    <InformationalVersion>v2.3.2.9</InformationalVersion>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
   </PropertyGroup>
 
