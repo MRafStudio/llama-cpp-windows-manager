@@ -231,7 +231,7 @@ public sealed partial class ReleaseHardeningTests
                     calls.Add($"busy:{message}");
                     await action();
                 },
-                (update, processPath, processId, _) =>
+                (update, _, processPath, processId, _) =>
                 {
                     calls.Add($"stage:{update.LatestVersion}:{processPath}:{processId}");
                     return Task.FromResult("Update staged. Closing to install...");

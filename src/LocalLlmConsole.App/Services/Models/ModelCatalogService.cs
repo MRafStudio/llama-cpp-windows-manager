@@ -239,10 +239,36 @@ public sealed partial class ModelCatalogService
     private static bool IsModelGguf(string file)
     {
         var name = Path.GetFileName(file);
-        return name.EndsWith(".gguf", StringComparison.OrdinalIgnoreCase)
-            && !LooksLikeVisionProjectorName(name)
-            && !LooksLikeDraftOrMtpHeadName(name)
-            && !HasStandaloneSpeculativeArchitecture(file);
+        if (!name.EndsWith(".gguf", StringComparison.OrdinalIgnoreCase))
+            return false;
+        if (LooksLikeVisionProjectorName(name))
+            return false;
+
+        // Имя похоже на компаньона (mtp/draft/spec) — но это может быть ПОЛНАЯ
+        // модель с MTP-слоями в имени (например Qwen3.5-1M-MTP-Q4_K_M: встроенный
+        // nextn-predict, а не head-файл). Решаем по метаданным GGUF: валидный
+        // GGUF с обычной архитектурой — это модель, показываем в списке.
+        if (LooksLikeDraftOrMtpHeadName(name) && !IsFullModelByGgufMetadata(file))
+            return false;
+
+        return !HasStandaloneSpeculativeArchitecture(file);
+    }
+
+    /// <summary>
+    /// Файл с «компаньонским» именем — полноценная модель? Проверяем метаданные:
+    /// валидный GGUF с архитектурой, НЕ являющейся спекулятивной (eagle3/dflash/
+    /// *-assistant), — это самостоятельная модель. Мусор/не-GGUF остаётся исключённым.
+    /// </summary>
+    private static bool IsFullModelByGgufMetadata(string file)
+    {
+        var metadata = GgufMetadataReader.TryRead(file);
+        var architecture = MetadataString(metadata, "general.architecture");
+        if (string.IsNullOrWhiteSpace(architecture))
+            return false;
+        return !architecture.Equals("eagle3", StringComparison.OrdinalIgnoreCase)
+            && !architecture.Equals("dflash", StringComparison.OrdinalIgnoreCase)
+            && !architecture.EndsWith("-assistant", StringComparison.OrdinalIgnoreCase)
+            && !architecture.EndsWith("_assistant", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string? FindLegacyModelJson(string modelPath)
