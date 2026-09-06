@@ -4,10 +4,22 @@ namespace LocalLlmConsole;
 
 public partial class App : System.Windows.Application
 {
-    private const string SingleInstanceMutexName = @"Local\llama.cpp-service-console-single-instance";
-
     private readonly SingleInstanceApplicationService _singleInstance = new(SingleInstanceApplicationService.AcquireMutexLease);
     private readonly DialogService _dialogs = new(ThemedMessageBox.Show);
+
+    /// <summary>
+    /// Имя mutex однокопийности вычисляется из КАТАЛОГА установки (как имя службы):
+    /// «D:\NEURO\LlamaGPU» → «Local\llama.cpp-service-console-d_neuro_llamagpu».
+    /// Копии из разных каталогов — разные mutex → работают одновременно.
+    /// </summary>
+    private static string SingleInstanceMutexName()
+    {
+        var serviceName = LocalLlmConsole.Services.ServiceIdentity.BuildServiceName(AppContext.BaseDirectory);
+        var suffix = serviceName.StartsWith(LocalLlmConsole.Services.ServiceIdentity.ServiceNamePrefix)
+            ? serviceName[LocalLlmConsole.Services.ServiceIdentity.ServiceNamePrefix.Length..]
+            : "single-instance";
+        return @"Local\llama.cpp-service-console-" + suffix;
+    }
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -23,7 +35,7 @@ public partial class App : System.Windows.Application
             return;
         }
 
-        if (!_singleInstance.TryAcquire(SingleInstanceMutexName)
+        if (!_singleInstance.TryAcquire(SingleInstanceMutexName())
             && !e.Args.Contains("--elevated-restart", StringComparer.OrdinalIgnoreCase))
         {
             _dialogs.Notify(null, "llama.cpp Windows Manager (ext) is already running.", "llama.cpp Windows Manager (ext)", MessageBoxImage.Information);

@@ -97,6 +97,10 @@ record `AppUpdateInfo` (AppUpdateService.cs) рос: добавились Servic
   службы. Всё, что ищет «свою» службу/процесс (GUI, Updater), ищет по имени,
   вычисленному из СВОЕГО каталога, и ждёт закрытия ТОЛЬКО своего экземпляра
   `LlamaCppWindowsManager.exe`.
+- **Single-instance — тоже по каталогу** (App.xaml.cs): имя mutex вычисляется из
+  каталога установки (как имя службы), НЕ глобальный `...-single-instance`!
+  Иначе вторая копия из другого каталога не стартует («already running»).
+  Control-API (llwmctl) — с fallback по портам, конфликт не блокирует старт.
 - **Миграция legacy `llama-cpp-server`**: если найдена служба с таким именем и
   её ImagePath указывает в текущий каталог — GUI показывает жёлтый баннер и кнопку
   «Перенести службу» (`LlamaServiceViewModel.DetectLegacyService/MigrateCommand`);
