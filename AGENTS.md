@@ -20,9 +20,11 @@ loopback API управления внутри запущенного Manager, �
   (инкремент четвёртого числа). НЕ своевольничать с нумерацией — только по
   указанию пользователя. Все релизы — с пометкой (ext).
   `LocalLlmConsole.App.csproj` (Version/AssemblyVersion/FileVersion/InformationalVersion),
-  **`LocalLlmConsole.Service.csproj` (Version)**,
+  **`LocalLlmConsole.Service.csproj` (Version)**, **`LocalLlmConsole.Updater.csproj` (Version)**,
   `MainWindow.xaml` (Title), `installer/LlamaCppWindowsManager.iss` (AppVersion),
   `MainWindow.State.cs` (AppVersionLabel). Забытая константа = неверный бейдж версии!
+  Проверка: `grep -rn "<старая версия>" src/ installer/` — после бампа не должно
+  остаться ни одного вхождения старой версии вне истории git.
 - **Разметка страниц — DockPanel**: при добавлении ЛЮБОГО нового элемента в страницу
   (Ui/Pages/*) ОБЯЗАТЕЛЬНО добавлять `DockPanel.SetDock(элемент, Dock.Top)` в блок
   «Set DockPanel alignment» в конце фабрики — иначе элемент причалится слева
@@ -82,6 +84,48 @@ record `AppUpdateInfo` (AppUpdateService.cs) рос: добавились Servic
   ИЗ БД (runtimes), а не из устаревшего service-config.json; страница перечитывает
   среды при каждом показе (`ReloadSelectionsAsync`), конфиг пересохраняется
   (`SaveSelection` после восстановления выбора).
+
+## Службы Windows (форк ext) — несколько копий = несколько служб
+
+- Имя службы и DisplayName ВЫЧИСЛЯЮТСЯ из каталога установки, НЕ хардкодятся.
+  Единое правило — `LocalLlmConsole.Core/Services/ServiceIdentity.cs`:
+  - serviceName: `llama-cpp-` + путь без `:\`, `\`→`_`, lower
+    (`D:\NEURO\LlamaGPU` → `llama-cpp-d_neuro_llamagpu`);
+  - DisplayName: `Llama.cpp (D:\NEURO\LlamaGPU)` — ПОЛНЫЙ путь каталога
+    (не `GetDirectoryName`, который срезает последний сегмент!).
+- Две копии из разных каталогов (LlamaManager, LlamaGPU, ...) = две независимые
+  службы. Всё, что ищет «свою» службу/процесс (GUI, Updater), ищет по имени,
+  вычисленному из СВОЕГО каталога, и ждёт закрытия ТОЛЬКО своего экземпляра
+  `LlamaCppWindowsManager.exe`.
+- **Миграция legacy `llama-cpp-server`**: если найдена служба с таким именем и
+  её ImagePath указывает в текущий каталог — GUI показывает жёлтый баннер и кнопку
+  «Перенести службу» (`LlamaServiceViewModel.DetectLegacyService/MigrateCommand`);
+  CanInstall блокируется, пока legacy не перенесена.
+- Служба хранит конфиг запуска в `data/state/service-config.json` (ExecutablePath
+  среды, аргументы, ModelId/ProfileId/RuntimeId). ВАЖНО: при переезде/переименовании
+  каталога пути в этом файле устаревают — GUI обязан перечитывать актуальные пути
+  из БД (таблицы runtimes/models) и пересохранять конфиг, а НЕ полагаться на
+  сохранённые абсолютные пути.
+
+## Релизный цикл (только по команде пользователя!)
+
+Порядок (не менять!):
+1. **Бамп версии** — инкремент 4-го числа (2.3.2.x), grep по старой версии по
+   ВСЕМ 6 местам (см. «Обязательные правила»); бейдж `(ext)` в AppVersionLabel
+   и Title обязателен.
+2. Release-сборка ТОЛЬКО single-file флагами:
+   `-p:PublishSingleFile=true -p:SelfContained=true
+   -p:IncludeNativeLibrariesForSelfExtract=true` (иначе DLL-мусор). Три проекта:
+   App, Service, Updater + `llwmctl.exe` (ControlCli) для Setup.
+3. Пересчитать `.sha256` для каждого ассета; zip полного набора; sbom
+   (`scripts/new-sbom.ps1 -Version ...`); Setup через Inno
+   (`scripts/build-installer.ps1`), Setup ОБЯЗАН содержать `LocalLlmConsole.Updater.exe`.
+4. Git: commit → push → тег `2.3.2.X` **на HEAD** (тег на старый коммит даёт
+   релизу старую дату и уводит его вниз списка!) → push тега → GitHub Release
+   **«2.3.2.X (ext)»** → загрузка 10 ассетов (5 файлов + 5 .sha256):
+   App, Service, Updater, win-x64.zip, Setup. Проверить: 10/10, порядок релизов
+   сверху вниз, ни один ассет не пропал (ошибки публикации «съедают» файлы тихо).
+5. Версии ассетов проверить через FileVersion (все exe = 2.3.2.X).
 
 - Используйте `llwmctl` для операций с живым Manager. Не редактируйте базу данных SQLite,
   не открывайте API управления и не автоматизируйте элементы управления WPF. Не запускайте `llama-server`
