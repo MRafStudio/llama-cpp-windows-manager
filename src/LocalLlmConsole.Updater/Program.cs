@@ -228,7 +228,7 @@ internal static class Program
             using var stream = File.OpenRead(path);
             if (stream.Length < 2) return false;
             var header = new byte[2];
-            stream.Read(header, 0, 2);
+            stream.ReadExactly(header, 0, 2);
             return header[0] == (byte)'M' && header[1] == (byte)'Z';
         }
         catch
