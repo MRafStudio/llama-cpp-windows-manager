@@ -956,6 +956,10 @@
   "Service.InstallSection": "Install / Uninstall Service",
   "Service.InstallButton": "Install Service",
   "Service.UninstallButton": "Uninstall Service",
+  "Service.MigrateButton": "Migrate Service",
   "Service.Status.Installing": "Installing service...",
-  "Service.Status.Uninstalling": "Uninstalling service..."
+  "Service.Status.Uninstalling": "Uninstalling service...",
+  "Service.Status.LegacyDetected": "Legacy service detected.",
+  "Service.Status.Migrating": "Migrating service to the new name...",
+  "Service.Hint.LegacyDetected": "A service with the legacy name 'llama-cpp-server' is installed in this directory. Service names are now derived from the install path — click 'Migrate Service' to remove the old one and install the new one."
 }

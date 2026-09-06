@@ -8,7 +8,43 @@ namespace LocalLlmConsole.Services;
 /// </summary>
 public sealed class WindowsServiceManager
 {
-    public const string ServiceName = "llama-cpp-server";
+    /// <summary>
+    /// Имя службы ВЫЧИСЛЯЕТСЯ из каталога установки приложения
+    /// (например, «llama-cpp-d_neuro_llamamanager» для D:\NEURO\LlamaManager).
+    /// Каждая копия приложения управляет только своей службой.
+    /// </summary>
+    public static string ServiceName
+        => ServiceIdentity.BuildServiceName(AppContext.BaseDirectory);
+
+    /// <summary>
+    /// Ищет службу этого же каталога, установленную под СТАРЫМ фиксированным
+    /// именем llama-cpp-server (до перехода на путь-зависимые имена).
+    /// Возвращает имя найденной службы или null, если такой нет.
+    /// </summary>
+    public string? FindLegacyServiceName()
+    {
+        try
+        {
+            using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(
+                @"SYSTEM\CurrentControlSet\Services\" + ServiceIdentity.LegacyServiceName);
+            if (key is null) return null;
+
+            var imagePath = key.GetValue("ImagePath") as string;
+            if (string.IsNullOrWhiteSpace(imagePath)) return null;
+
+            // binPath= записывается как "D:\NEURO\LlamaManager\LocalLlmConsole.Service.exe"
+            // (sc.exe хранит значение как есть; кавычки возможны при пробелах в пути).
+            var expected = Path.Combine(AppContext.BaseDirectory, "LocalLlmConsole.Service.exe");
+            var normalizedPath = imagePath.Trim().Trim('"');
+            return string.Equals(normalizedPath, expected, StringComparison.OrdinalIgnoreCase)
+                ? ServiceIdentity.LegacyServiceName
+                : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
 
     /// <summary>
     /// Отображаемое имя установленной службы (например, «Llama.cpp (D:\...\LlamaManager)»).

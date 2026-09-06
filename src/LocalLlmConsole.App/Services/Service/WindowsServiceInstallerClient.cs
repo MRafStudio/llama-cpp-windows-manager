@@ -12,28 +12,45 @@ public sealed class WindowsServiceInstallerClient
     public const string ServiceExeFileName = "LocalLlmConsole.Service.exe";
 
     public LlamaServiceOperationResult Install()
+        => Install(null);
+
+    /// <summary>
+    /// Устанавливает службу под указанным именем (null — имя вычисляется
+    /// Service.exe из его каталога). Явное имя нужно при миграции, когда
+    /// каталог переименован и старое имя не совпадает с вычисленным.
+    /// </summary>
+    public LlamaServiceOperationResult Install(string? serviceName)
     {
         if (!IsAdministrator())
             return new LlamaServiceOperationResult(false, "Требуется запуск от имени администратора для установки службы. Перезапустите приложение с правами администратора.", LlamaServiceStatus.Stopped);
 
-        var (exitCode, error) = RunServiceExe("--install");
+        var (exitCode, error) = RunServiceExe("--install", serviceName);
+        var name = serviceName ?? WindowsServiceManager.ServiceName;
         return exitCode == 0
-            ? new LlamaServiceOperationResult(true, $"Служба {WindowsServiceManager.ServiceName} установлена.", LlamaServiceStatus.Stopped)
+            ? new LlamaServiceOperationResult(true, $"Служба {name} установлена.", LlamaServiceStatus.Stopped)
             : new LlamaServiceOperationResult(false, $"Ошибка установки службы: {error.Trim()}");
     }
 
     public LlamaServiceOperationResult Uninstall()
+        => Uninstall(null);
+
+    /// <summary>
+    /// Удаляет службу под указанным именем (null — вычисленное имя).
+    /// Явное имя нужно для удаления легаси-службы llama-cpp-server.
+    /// </summary>
+    public LlamaServiceOperationResult Uninstall(string? serviceName)
     {
         if (!IsAdministrator())
             return new LlamaServiceOperationResult(false, "Требуется запуск от имени администратора для удаления службы. Перезапустите приложение с правами администратора.", LlamaServiceStatus.Stopped);
 
-        var (exitCode, error) = RunServiceExe("--uninstall");
+        var (exitCode, error) = RunServiceExe("--uninstall", serviceName);
+        var name = serviceName ?? WindowsServiceManager.ServiceName;
         return exitCode == 0
-            ? new LlamaServiceOperationResult(true, $"Служба {WindowsServiceManager.ServiceName} удалена.", LlamaServiceStatus.Stopped)
+            ? new LlamaServiceOperationResult(true, $"Служба {name} удалена.", LlamaServiceStatus.Stopped)
             : new LlamaServiceOperationResult(false, $"Ошибка удаления службы: {error.Trim()}");
     }
 
-    private static (int ExitCode, string Error) RunServiceExe(string argument)
+    private static (int ExitCode, string Error) RunServiceExe(string argument, string? serviceName = null)
     {
         var exePath = Path.Combine(AppContext.BaseDirectory, ServiceExeFileName);
         if (!File.Exists(exePath))
@@ -48,6 +65,11 @@ public sealed class WindowsServiceInstallerClient
             RedirectStandardError = true
         };
         psi.ArgumentList.Add(argument);
+        if (!string.IsNullOrWhiteSpace(serviceName))
+        {
+            psi.ArgumentList.Add("--service-name");
+            psi.ArgumentList.Add(serviceName);
+        }
 
         using var process = Process.Start(psi);
         if (process is null) return (1, "Не удалось запустить установщик службы.");

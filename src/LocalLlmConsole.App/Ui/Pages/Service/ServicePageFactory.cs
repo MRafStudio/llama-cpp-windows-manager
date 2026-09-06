@@ -326,6 +326,55 @@ public static class ServicePageFactory
         installPanel.Children.Add(uninstallButton);
         root.Children.Add(installPanel);
 
+        // Баннер миграции: в каталоге найдена служба со старым именем
+        // (llama-cpp-server) — предлагаем перенести её на путь-зависимое имя.
+        var migrationPanel = new StackPanel
+        {
+            Margin = new Thickness(0, 0, 0, 16),
+            Background = new SolidColorBrush(Color.FromRgb(0xFF, 0xF3, 0xCD)),
+        };
+        var migrationText = new TextBlock
+        {
+            Text = Loc.T("Service.Hint.LegacyDetected"),
+            FontSize = 13,
+            Foreground = new SolidColorBrush(Color.FromRgb(0x6B, 0x4F, 0x00)),
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 10)
+        };
+        migrationPanel.Children.Add(migrationText);
+
+        var migrateButton = new Button
+        {
+            Content = Loc.T("Service.MigrateButton"),
+            Width = 180,
+            Height = 34,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            IsEnabled = true
+        };
+        VisualRole.SetButtonRole(migrateButton, VisualRole.Primary);
+        var migrateCommandBinding = new System.Windows.Data.Binding("MigrateCommand")
+        {
+            Source = request.ViewModel,
+            Mode = System.Windows.Data.BindingMode.OneWay
+        };
+        migrateButton.SetBinding(Button.CommandProperty, migrateCommandBinding);
+        var migrateEnabledBinding = new System.Windows.Data.Binding("CanMigrate")
+        {
+            Source = request.ViewModel,
+            Mode = System.Windows.Data.BindingMode.OneWay
+        };
+        migrateButton.SetBinding(Button.IsEnabledProperty, migrateEnabledBinding);
+        migrationPanel.Children.Add(migrateButton);
+
+        var migrationVisibilityBinding = new System.Windows.Data.Binding("HasLegacyService")
+        {
+            Source = request.ViewModel,
+            Mode = System.Windows.Data.BindingMode.OneWay,
+            Converter = new System.Windows.Controls.BooleanToVisibilityConverter()
+        };
+        migrationPanel.SetBinding(StackPanel.VisibilityProperty, migrationVisibilityBinding);
+        root.Children.Add(migrationPanel);
+
         // Разделитель
         var separator = new Separator
         {
@@ -390,6 +439,7 @@ public static class ServicePageFactory
         DockPanel.SetDock(buttonPanel, Dock.Top);
         DockPanel.SetDock(installHeader, Dock.Top);
         DockPanel.SetDock(installPanel, Dock.Top);
+        DockPanel.SetDock(migrationPanel, Dock.Top);
         DockPanel.SetDock(separator, Dock.Top);
         DockPanel.SetDock(descriptionText, Dock.Top);
         DockPanel.SetDock(errorLabel, Dock.Top);

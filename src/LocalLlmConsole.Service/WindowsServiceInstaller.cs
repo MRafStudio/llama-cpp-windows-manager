@@ -8,7 +8,13 @@ namespace LocalLlmConsole.Service;
 /// </summary>
 public static class WindowsServiceInstaller
 {
-    public static int Install()
+    /// <summary>
+    /// Устанавливает службу. Если serviceName не задан — имя вычисляется
+    /// из каталога установки (ServiceIdentity). При миграции со старого имени
+    /// (llama-cpp-server) GUI передаёт --service-name явно, чтобы удалить
+    /// именно старую службу.
+    /// </summary>
+    public static int Install(string? serviceName = null)
     {
         var exePath = Path.Combine(AppContext.BaseDirectory, "LocalLlmConsole.Service.exe");
         if (!File.Exists(exePath))
@@ -17,7 +23,11 @@ public static class WindowsServiceInstaller
             return 1;
         }
 
-        var create = RunSc("create", LlamaServerWindowsService.Name,
+        var name = string.IsNullOrWhiteSpace(serviceName)
+            ? LlamaServerWindowsService.Name
+            : serviceName;
+
+        var create = RunSc("create", name,
             "binPath=", exePath,
             "start=", "auto",
             "DisplayName=", LlamaServerWindowsService.BuildDisplayName());
@@ -27,24 +37,28 @@ public static class WindowsServiceInstaller
             return create;
         }
 
-        RunSc("description", LlamaServerWindowsService.Name,
+        RunSc("description", name,
             LlamaServerWindowsService.BuildDescription());
 
-        Console.WriteLine($"Служба {LlamaServerWindowsService.Name} установлена.");
+        Console.WriteLine($"Служба {name} установлена.");
         return 0;
     }
 
-    public static int Uninstall()
+    public static int Uninstall(string? serviceName = null)
     {
-        RunSc("stop", LlamaServerWindowsService.Name);
-        var delete = RunSc("delete", LlamaServerWindowsService.Name);
+        var name = string.IsNullOrWhiteSpace(serviceName)
+            ? LlamaServerWindowsService.Name
+            : serviceName;
+
+        RunSc("stop", name);
+        var delete = RunSc("delete", name);
         if (delete != 0)
         {
             Console.Error.WriteLine("Не удалось удалить службу. Возможно, она не установлена.");
             return delete;
         }
 
-        Console.WriteLine($"Служба {LlamaServerWindowsService.Name} удалена.");
+        Console.WriteLine($"Служба {name} удалена.");
         return 0;
     }
 

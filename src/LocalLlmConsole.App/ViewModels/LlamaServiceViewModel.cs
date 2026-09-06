@@ -197,6 +197,7 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
                 OnPropertyChanged(nameof(CanStart));
                 OnPropertyChanged(nameof(CanStop));
                 OnPropertyChanged(nameof(CanRestart));
+                OnPropertyChanged(nameof(CanMigrate));
             }
         }
     }
@@ -233,6 +234,7 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
                 OnPropertyChanged(nameof(CanUninstall));
                 OnPropertyChanged(nameof(ServiceStatus));
                 OnPropertyChanged(nameof(ServiceStatusColor));
+                OnPropertyChanged(nameof(CanMigrate));
             }
         }
     }
@@ -249,10 +251,58 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(ServiceDisplayName));
     }
 
+    private string? _legacyServiceName;
+
     /// <summary>
-    /// Доступна ли установка службы (нет активной операции, служба не установлена).
+    /// Имя легаси-службы (llama-cpp-server) из ЭТОГО же каталога, установленной
+    /// до перехода на путь-зависимые имена. Не null — страница предлагает миграцию.
     /// </summary>
-    public bool CanInstall => !_isLoading && !_isInstalled;
+    public string? LegacyServiceName
+    {
+        get => _legacyServiceName;
+        private set
+        {
+            if (_legacyServiceName != value)
+            {
+                _legacyServiceName = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(HasLegacyService));
+                OnPropertyChanged(nameof(CanMigrate));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Найдена ли легаси-служба из этого каталога (требуется миграция).
+    /// </summary>
+    public bool HasLegacyService => !string.IsNullOrWhiteSpace(_legacyServiceName);
+
+    /// <summary>
+    /// Доступна ли миграция легаси-службы (нет активной операции, служба с
+    /// правильным именем НЕ установлена, легаси-служба найдена).
+    /// </summary>
+    public bool CanMigrate => !_isLoading && !_isInstalled && HasLegacyService;
+
+    /// <summary>
+    /// Обнаруживает легаси-службу (старое фиксированное имя llama-cpp-server)
+    /// из этого же каталога. Если вычисленное (путь-зависимое) имя не установлено,
+    /// а легаси найдена — страница предложит перенести службу на новое имя.
+    /// </summary>
+    private void DetectLegacyService()
+    {
+        if (_isInstalled)
+        {
+            LegacyServiceName = null;
+            return;
+        }
+        LegacyServiceName = _serviceManager.FindLegacyServiceName();
+    }
+
+    /// <summary>
+    /// Доступна ли установка службы (нет активной операции, служба не установлена,
+    /// нет легаси-службы — при найденной легаси установка идёт через миграцию).
+    /// </summary>
+    public bool CanInstall => !_isLoading && !_isInstalled && !HasLegacyService;
 
     /// <summary>
     /// Доступно ли удаление службы (нет активной операции, служба установлена).
@@ -281,6 +331,7 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
     public ICommand ElevateCommand { get; }
     public ICommand InstallCommand { get; }
     public ICommand UninstallCommand { get; }
+    public ICommand MigrateCommand { get; }
 
     /// <summary>Установленные модели (для выпадающего списка).</summary>
     public IReadOnlyList<LocalLlmConsole.Models.ModelRecord> Models
@@ -379,6 +430,7 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
         ElevateCommand = new RelayCommand(ExecuteElevate, _ => true);
         InstallCommand = new RelayCommand(ExecuteInstall, CanExecuteInstall);
         UninstallCommand = new RelayCommand(ExecuteUninstall, CanExecuteUninstall);
+        MigrateCommand = new RelayCommand(ExecuteMigrate, CanExecuteMigrate);
 
         IsElevated = IsAdministrator();
 
@@ -433,11 +485,16 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
         {
             IsInstalled = _serviceManager.IsInstalled();
             UpdateServiceDisplayName();
+            DetectLegacyService();
 
             if (!IsInstalled)
             {
-                StatusText = Loc.T("Service.Status.NotInstalled");
-                LastMessage = Loc.T("Service.Hint.NotInstalled");
+                StatusText = HasLegacyService
+                    ? Loc.T("Service.Status.LegacyDetected")
+                    : Loc.T("Service.Status.NotInstalled");
+                LastMessage = HasLegacyService
+                    ? Loc.T("Service.Hint.LegacyDetected")
+                    : Loc.T("Service.Hint.NotInstalled");
                 HasError = false;
                 Status = LlamaServiceStatus.Stopped;
                 return;
@@ -637,6 +694,7 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
             // Обновляем состояние установки, чтобы кнопки переключились
             IsInstalled = _serviceManager.IsInstalled();
             UpdateServiceDisplayName();
+            DetectLegacyService();
         }
         catch (Exception ex)
         {
@@ -663,6 +721,7 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
             // Обновляем состояние установки, чтобы кнопки переключились
             IsInstalled = _serviceManager.IsInstalled();
             UpdateServiceDisplayName();
+            DetectLegacyService();
         }
         catch (Exception ex)
         {
@@ -675,6 +734,46 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
     }
 
     private bool CanExecuteUninstall(object? param) => CanUninstall;
+
+    /// <summary>
+    /// Переносит легаси-службу (старое имя llama-cpp-server) на путь-зависимое
+    /// имя: удаляет старую и устанавливает новую (с правильным именем).
+    /// </summary>
+    private void ExecuteMigrate(object? param)
+    {
+        if (IsLoading || !CanMigrate) return;
+        var legacyName = LegacyServiceName;
+        if (string.IsNullOrWhiteSpace(legacyName)) return;
+
+        IsLoading = true;
+        StatusText = Loc.T("Service.Status.Migrating");
+        try
+        {
+            var uninstallResult = _installer.Uninstall(legacyName);
+            if (!uninstallResult.Success)
+            {
+                ApplyResult(uninstallResult);
+                return;
+            }
+
+            var installResult = _installer.Install();
+            ApplyResult(installResult);
+
+            IsInstalled = _serviceManager.IsInstalled();
+            UpdateServiceDisplayName();
+            DetectLegacyService();
+        }
+        catch (Exception ex)
+        {
+            SetError($"{Loc.T("Service.Status.Error")}: {ex.Message}");
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private bool CanExecuteMigrate(object? param) => CanMigrate;
 
     /// <summary>
     /// Собирает параметры запуска из выбранных на странице службы модели,

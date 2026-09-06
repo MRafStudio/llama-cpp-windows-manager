@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.ServiceProcess;
 using System.Text.Json;
+using LocalLlmConsole.Services;
 
 namespace LocalLlmConsole.Service;
 
@@ -12,17 +13,20 @@ namespace LocalLlmConsole.Service;
 /// </summary>
 public sealed class LlamaServerWindowsService : ServiceBase
 {
-    public const string Name = "llama-cpp-server";
+    /// <summary>
+    /// Имя службы ВЫЧИСЛЯЕТСЯ из каталога установки (где лежит этот Service.exe,
+    /// рядом с LlamaCppWindowsManager.exe). Несколько копий приложения из разных
+    /// каталогов получают разные имена служб и не конфликтуют.
+    /// </summary>
+    public static string Name => ServiceIdentity.BuildServiceName(AppContext.BaseDirectory);
 
     /// <summary>
-    /// Отображаемое имя службы: "Llama.cpp (путь к папке службы без имени файла)".
+    /// Отображаемое имя службы: «Llama.cpp (D:\NEURO\LlamaManager)» — ПОЛНЫЙ путь
+    /// к каталогу приложения (не родительский), чтобы было видно, какая копия
+    /// установила службу.
     /// </summary>
     public static string BuildDisplayName()
-    {
-        var baseDir = AppContext.BaseDirectory?.TrimEnd('\\', '/') ?? "";
-        var folder = Path.GetDirectoryName(baseDir) ?? baseDir;
-        return string.IsNullOrWhiteSpace(folder) ? "Llama.cpp" : $"Llama.cpp ({folder})";
-    }
+        => ServiceIdentity.BuildDisplayName(AppContext.BaseDirectory);
 
     /// <summary>
     /// Локалезависимое описание службы: русское на системах с RU-локалью,

@@ -956,6 +956,10 @@
   "Service.InstallSection": "Установка / Удаление службы",
   "Service.InstallButton": "Установить службу",
   "Service.UninstallButton": "Удалить службу",
+  "Service.MigrateButton": "Перенести службу",
   "Service.Status.Installing": "Установка службы...",
-  "Service.Status.Uninstalling": "Удаление службы..."
+  "Service.Status.Uninstalling": "Удаление службы...",
+  "Service.Status.LegacyDetected": "Найдена служба со старым именем.",
+  "Service.Status.Migrating": "Перенос службы на новое имя...",
+  "Service.Hint.LegacyDetected": "В этом каталоге установлена служба с прежним именем «llama-cpp-server». Имя службы теперь зависит от пути — нажмите «Перенести службу», чтобы удалить старую и установить новую."
 }
