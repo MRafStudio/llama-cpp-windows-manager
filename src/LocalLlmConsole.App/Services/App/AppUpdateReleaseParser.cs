@@ -38,35 +38,51 @@ public static class AppUpdateReleaseParser
         var updaterChecksum = SelectChecksumAsset(assets, updaterAsset.Name);
         var latest = NormalizeVersion(latestVersion);
         var current = NormalizeVersion(currentVersion);
+        // ВАЖНО: только именованные аргументы! Позиционные вызовы этого record
+        // сдвигались при добавлении полей (ExpectedSha256 и т.п.) — из-за этого
+        // ZipAssetUrl получал URL .sha256-файла, а чексумма уходила в fallback
+        // на exe. Именованные аргументы исключают сдвиг навсегда.
         return new AppUpdateInfo(
-            IsVersionNewer(latest, current),
-            VersionLabel(currentVersion),
-            VersionLabel(latestVersion),
-            FirstNonBlank(release["name"]?.ToString(), VersionLabel(latestVersion)),
-            release["body"]?.ToString() ?? "",
-            release["html_url"]?.ToString() ?? AppUpdateService.RepositoryUrl,
-            asset.Name,
-            asset.Url,
-            asset.Size,
-            checksum.Name,
-            checksum.Url,
-            "",
-            serviceAsset.Name,
-            serviceAsset.Url,
-            serviceChecksum.Name,
-            serviceChecksum.Url,
-            updaterAsset.Name,
-            updaterAsset.Url,
-            updaterChecksum.Name,
-            updaterChecksum.Url,
-            zipAsset.Name,
-            zipAsset.Url,
-            zipChecksum.Name,
-            zipChecksum.Url);
+            IsAvailable: IsVersionNewer(latest, current),
+            CurrentVersion: VersionLabel(currentVersion),
+            LatestVersion: VersionLabel(latestVersion),
+            ReleaseName: FirstNonBlank(release["name"]?.ToString(), VersionLabel(latestVersion)),
+            ReleaseNotes: release["body"]?.ToString() ?? "",
+            HtmlUrl: release["html_url"]?.ToString() ?? AppUpdateService.RepositoryUrl,
+            AssetName: asset.Name,
+            AssetUrl: asset.Url,
+            AssetSize: asset.Size,
+            ChecksumAssetName: checksum.Name,
+            ChecksumAssetUrl: checksum.Url,
+            ExpectedSha256: "",
+            ServiceAssetName: serviceAsset.Name,
+            ServiceAssetUrl: serviceAsset.Url,
+            ServiceChecksumAssetName: serviceChecksum.Name,
+            ServiceChecksumAssetUrl: serviceChecksum.Url,
+            ServiceExpectedSha256: "",
+            UpdaterAssetName: updaterAsset.Name,
+            UpdaterAssetUrl: updaterAsset.Url,
+            UpdaterChecksumAssetName: updaterChecksum.Name,
+            UpdaterChecksumAssetUrl: updaterChecksum.Url,
+            UpdaterExpectedSha256: "",
+            ZipAssetName: zipAsset.Name,
+            ZipAssetUrl: zipAsset.Url,
+            ZipChecksumAssetName: zipChecksum.Name,
+            ZipChecksumAssetUrl: zipChecksum.Url,
+            ZipExpectedSha256: "");
     }
 
     public static AppUpdateInfo NoUpdateAvailable(string currentVersion, string message = "No updates are available.")
-        => new(false, VersionLabel(currentVersion), VersionLabel(currentVersion), message, message, AppUpdateService.RepositoryUrl, "", "", 0);
+        => new(
+            IsAvailable: false,
+            CurrentVersion: VersionLabel(currentVersion),
+            LatestVersion: VersionLabel(currentVersion),
+            ReleaseName: message,
+            ReleaseNotes: message,
+            HtmlUrl: AppUpdateService.RepositoryUrl,
+            AssetName: "",
+            AssetUrl: "",
+            AssetSize: 0);
 
     public static bool IsPortableExeName(string name)
         => PortableExeNames.Any(candidate => candidate.Equals(name, StringComparison.OrdinalIgnoreCase));
