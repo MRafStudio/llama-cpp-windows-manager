@@ -116,6 +116,12 @@ public partial class MainWindow
         // Привязываем ViewModel к MainWindowViewModel для данных
         _viewModel.LlamaService = _serviceViewModel;
 
+        // Каждый показ страницы — перечитываем модели и среды выполнения из БД
+        // и восстанавливаем выбор. Путь к среде могли поменять на странице
+        // «Среда выполнения» («Выбрать папку») — без перечитки VM держит
+        // устаревший список и пишет в конфиг службы старый путь.
+        _ = _serviceViewModel.ReloadSelectionsAsync();
+
         var servicePage = Ui.Pages.Service.ServicePageFactory.Create(new Ui.Pages.Service.ServicePageRequest(_serviceViewModel));
         PageHost.Content = servicePage.Content;
     }

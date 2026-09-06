@@ -7,10 +7,10 @@
     <AssemblyName>LocalLlmConsole.Updater</AssemblyName>
     <RootNamespace>LocalLlmConsole.Updater</RootNamespace>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-    <Version>2.3.2.6</Version>
-    <AssemblyVersion>2.3.2.6</AssemblyVersion>
-    <FileVersion>2.3.2.6</FileVersion>
-    <InformationalVersion>v2.3.2.6</InformationalVersion>
+    <Version>2.3.2.7</Version>
+    <AssemblyVersion>2.3.2.7</AssemblyVersion>
+    <FileVersion>2.3.2.7</FileVersion>
+    <InformationalVersion>v2.3.2.7</InformationalVersion>
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>

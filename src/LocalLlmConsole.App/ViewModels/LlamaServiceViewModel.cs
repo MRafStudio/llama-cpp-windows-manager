@@ -447,6 +447,14 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
     private readonly DispatcherTimer _statusTimer;
 
     /// <summary>
+    /// Перечитывает модели и среды выполнения из БД и восстанавливает выбор
+    /// (сохранённый в конфиге). Нужно вызывать при каждом показе страницы:
+    /// путь к среде могли поменять на странице «Среда выполнения» («Выбрать папку»),
+    /// а VM живёт долго и держит устаревший список.
+    /// </summary>
+    public Task ReloadSelectionsAsync() => LoadSelectionsAsync();
+
+    /// <summary>
     /// Тихий опрос статуса службы (без спиннера): обновляет кнопки и статус,
     /// если состояние службы изменилось извне.
     /// </summary>
@@ -543,6 +551,12 @@ public sealed class LlamaServiceViewModel : INotifyPropertyChanged
                 ? savedRuntime
                 : Runtimes.FirstOrDefault();
             // Профили загружаются в RefreshProfilesAsync (вызывается из setter SelectedModel)
+
+            // Принудительно пересохраняем конфиг: путь к среде выполнения мог
+            // измениться (переезд каталога, «Выбрать папку» на странице сред),
+            // а сеттеры сохраняют только при ИЗМЕНЕНИИ выбора. Здесь путь всегда
+            // берётся заново из БД и пишется в service-config.json актуальным.
+            SaveSelection();
         }
         catch (Exception ex)
         {
