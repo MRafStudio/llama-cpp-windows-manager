@@ -15,6 +15,9 @@ public static class AppUpdateReleaseParser
         var assets = release["assets"]?.AsArray();
         var asset = SelectPortableAsset(assets);
         var checksum = SelectChecksumAsset(assets, asset.Name);
+        // ZIP-архив обновления (полный: App + Service + Updater + llwmctl).
+        var zipAsset = SelectZipAsset(assets);
+        var zipChecksum = SelectChecksumAsset(assets, zipAsset.Name);
         const string serviceAssetName = "LocalLlmConsole.Service.exe";
         var serviceAsset = assets
             ?.OfType<JsonObject>()
@@ -55,7 +58,11 @@ public static class AppUpdateReleaseParser
             updaterAsset.Name,
             updaterAsset.Url,
             updaterChecksum.Name,
-            updaterChecksum.Url);
+            updaterChecksum.Url,
+            zipAsset.Name,
+            zipAsset.Url,
+            zipChecksum.Name,
+            zipChecksum.Url);
     }
 
     public static AppUpdateInfo NoUpdateAvailable(string currentVersion, string message = "No updates are available.")
@@ -83,6 +90,22 @@ public static class AppUpdateReleaseParser
             : candidates.FirstOrDefault(asset => asset.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) && asset.Name.Contains("win-x64", StringComparison.OrdinalIgnoreCase))
                 is var zip && !string.IsNullOrWhiteSpace(zip.Name) ? zip
             : candidates.FirstOrDefault(asset => asset.Name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// ZIP-архив обновления (например, LlamaCppWindowsManager-win-x64.zip).
+    /// Содержит полный набор: приложение, службу, Updater, llwmctl.
+    /// </summary>
+    private static (string Name, string Url) SelectZipAsset(JsonArray? assets)
+    {
+        if (assets is null) return ("", "");
+        return assets
+            .OfType<JsonObject>()
+            .Select(asset => (
+                Name: asset["name"]?.ToString() ?? "",
+                Url: FirstNonBlank(asset["browser_download_url"]?.ToString(), asset["url"]?.ToString())))
+            .FirstOrDefault(asset => asset.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)
+                                     && asset.Name.Contains("win-x64", StringComparison.OrdinalIgnoreCase));
     }
 
     private static (string Name, string Url) SelectChecksumAsset(JsonArray? assets, string assetName)

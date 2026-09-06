@@ -25,7 +25,12 @@ public sealed record AppUpdateInfo(
     string UpdaterAssetUrl = "",
     string UpdaterChecksumAssetName = "",
     string UpdaterChecksumAssetUrl = "",
-    string UpdaterExpectedSha256 = "");
+    string UpdaterExpectedSha256 = "",
+    string ZipAssetName = "",
+    string ZipAssetUrl = "",
+    string ZipChecksumAssetName = "",
+    string ZipChecksumAssetUrl = "",
+    string ZipExpectedSha256 = "");
 
 public sealed record AppUpdateInstallPlan(
     string ScriptPath,
@@ -257,10 +262,9 @@ public sealed partial class AppUpdateService
     /// <summary>
     /// Запускает автономный Updater-процесс (LocalLlmConsole.Updater.exe).
     /// Файлы УЖЕ скачаны и проверены GUI — Updater только применяет их:
-    /// UAC (если есть служба), KILL родителя, стоп/замена/старт службы,
-    /// автозапуск приложения. Запускается скрыто (без консольного окна).
-    /// Если GUI скачал свежий Updater (files.UpdaterFilePath) — сперва
-    /// подменяем им Updater рядом с приложением, чтобы он не устаревал.
+    /// UAC (если есть служба), ждёт/KILL приложения из этого каталога,
+    /// стоп/замена/старт службы, автозапуск приложения.
+    /// Updater запускается ОТДЕЛЬНЫМ процессом и переживает закрытие GUI.
     /// </summary>
     public void StartUpdaterProcess(AppUpdateInfo update, UpdateDownloadResult files, int currentProcessId)
     {
@@ -282,6 +286,7 @@ public sealed partial class AppUpdateService
 
         if (!File.Exists(updaterPath))
             throw new InvalidOperationException($"Updater not found next to the application: {updaterPath}");
+
         var psi = new ProcessStartInfo
         {
             FileName = updaterPath,
@@ -295,58 +300,65 @@ public sealed partial class AppUpdateService
         psi.ArgumentList.Add(update.LatestVersion);
         psi.ArgumentList.Add("--target-dir");
         psi.ArgumentList.Add(targetDir);
-        psi.ArgumentList.Add("--parent-pid");
-        psi.ArgumentList.Add(currentProcessId.ToString());
-        psi.ArgumentList.Add("--app-file");
-        psi.ArgumentList.Add(files.AppFilePath);
-        if (!string.IsNullOrWhiteSpace(files.ServiceFilePath))
-        {
-            psi.ArgumentList.Add("--service-file");
-            psi.ArgumentList.Add(files.ServiceFilePath);
-        }
-        if (IsServiceInstalled(WindowsServiceManager.ServiceName))
+        psi.ArgumentList.Add("--update-zip");
+        psi.ArgumentList.Add(files.ZipFilePath);
+        var serviceName = ResolveInstalledServiceName();
+        if (!string.IsNullOrWhiteSpace(serviceName))
         {
             psi.ArgumentList.Add("--service-name");
-            psi.ArgumentList.Add(WindowsServiceManager.ServiceName);
+            psi.ArgumentList.Add(serviceName);
         }
         _startProcess(psi);
     }
 
-    /// <summary>Результат скачивания: пути к проверенным файлам (temp).</summary>
-    public sealed record UpdateDownloadResult(string AppFilePath, string? ServiceFilePath, string? UpdaterFilePath = null);
+    /// <summary>
+    /// Определяет имя установленной службы ЭТОГО каталога: сначала новое
+    /// (путь-зависимое), затем легаси llama-cpp-server (если ещё не мигрирована).
+    /// </summary>
+    public static string? ResolveInstalledServiceName()
+    {
+        if (IsServiceInstalled(WindowsServiceManager.ServiceName))
+            return WindowsServiceManager.ServiceName;
+        try
+        {
+            return new WindowsServiceManager().FindLegacyServiceName();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Результат скачивания: пути к проверенным файлам (рядом с приложением).</summary>
+    public sealed record UpdateDownloadResult(string ZipFilePath, string? UpdaterFilePath);
 
     /// <summary>
-    /// Скачивает App (и Service, если служба установлена) в %TEMP%\LlamaUpdater\<version>
-    /// с прогрессом, проверяет SHA-256. При ошибке — исключение (GUI остаётся работать).
+    /// Скачивает ZIP обновления (и свежий Updater, если есть в релизе) в
+    /// LlamaUpdate\&lt;версия&gt; РЯДОМ С ПРИЛОЖЕНИЕМ (каталог уникален для каждой
+    /// копии — при нескольких установках ничего не перемешивается),
+    /// проверяет SHA-256. При ошибке — исключение (GUI остаётся работать).
     /// </summary>
     public async Task<UpdateDownloadResult> DownloadAndVerifyAsync(
         AppUpdateInfo update,
         IProgress<UpdateProgressState>? progress,
         CancellationToken cancellationToken = default)
     {
-        var tempDir = Path.Combine(Path.GetTempPath(), "LlamaUpdater", update.LatestVersion);
+        var updateRoot = Path.Combine(AppContext.BaseDirectory, "LlamaUpdate");
+        var tempDir = Path.Combine(updateRoot, RegexSafeFileName(update.LatestVersion));
         Directory.CreateDirectory(tempDir);
 
-        var appPath = Path.Combine(tempDir, "LlamaCppWindowsManager.exe");
-        progress?.Report(new UpdateProgressState(-1, "Скачивание приложения..."));
-        await DownloadAssetWithProgressAsync(update.AssetUrl, appPath, "приложения", progress, cancellationToken);
-        var appSha = await FetchSha256Async(update.ChecksumAssetUrl, cancellationToken)
-            ?? throw new InvalidOperationException("Не удалось получить контрольную сумму приложения.");
-        VerifySha256(appPath, appSha, "приложения");
-
-        string? servicePath = null;
-        if (IsServiceInstalled(WindowsServiceManager.ServiceName))
-        {
-            if (string.IsNullOrWhiteSpace(update.ServiceAssetUrl))
-                throw new InvalidOperationException(
-                    "The release does not include LocalLlmConsole.Service.exe. Refusing to stage an incomplete update.");
-            servicePath = Path.Combine(tempDir, "LocalLlmConsole.Service.exe");
-            progress?.Report(new UpdateProgressState(-1, "Скачивание службы..."));
-            await DownloadAssetWithProgressAsync(update.ServiceAssetUrl, servicePath, "службы", progress, cancellationToken);
-            var serviceSha = await FetchSha256Async(update.ServiceChecksumAssetUrl, cancellationToken)
-                ?? throw new InvalidOperationException("Не удалось получить контрольную сумму службы.");
-            VerifySha256(servicePath, serviceSha, "службы");
-        }
+        // ZIP-архив (полный набор обновления).
+        var zipUrl = !string.IsNullOrWhiteSpace(update.ZipAssetUrl) ? update.ZipAssetUrl : update.AssetUrl;
+        var zipName = !string.IsNullOrWhiteSpace(update.ZipAssetName) ? update.ZipAssetName
+            : update.AssetName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) ? update.AssetName
+            : "LlamaCppWindowsManager-win-x64.zip";
+        var zipChecksumUrl = !string.IsNullOrWhiteSpace(update.ZipChecksumAssetUrl) ? update.ZipChecksumAssetUrl : update.ChecksumAssetUrl;
+        var zipPath = Path.Combine(tempDir, RegexSafeFileName(zipName));
+        progress?.Report(new UpdateProgressState(-1, "Скачивание обновления..."));
+        await DownloadAssetWithProgressAsync(zipUrl, zipPath, "обновления", progress, cancellationToken);
+        var zipSha = await FetchSha256Async(zipChecksumUrl, cancellationToken)
+            ?? throw new InvalidOperationException("Не удалось получить контрольную сумму обновления.");
+        VerifySha256(zipPath, zipSha, "обновления");
 
         // Свежий Updater (всегда, если есть в релизе) — чтобы локальный не устаревал.
         string? updaterPath = null;
@@ -361,7 +373,7 @@ public sealed partial class AppUpdateService
         }
 
         progress?.Report(new UpdateProgressState(100, "Загрузка завершена, всё проверено."));
-        return new UpdateDownloadResult(appPath, servicePath, updaterPath);
+        return new UpdateDownloadResult(zipPath, updaterPath);
     }
 
     private async Task DownloadAssetWithProgressAsync(
