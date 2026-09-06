@@ -47,6 +47,14 @@ loopback API управления внутри запущенного Manager, �
 
 ## ⚠️ Релиз: ЧИСТЫЙ дистрибутив — ЕДИНАЯ точка `scripts/build-ext-release.ps1`!
 
+- **Пользовательский профиль НЕ переписывать автоматически!** Если GGUF
+  расходится с сохранённым ContextSize — это НЕ баг «не пересчитался»:
+  ContextSize в профиле = ручная настройка. Для перечитывания есть кнопка
+  **«⟳ GGUF»** рядом с полем «Размер контекста» (страница Модели): она
+  читает context_length из метаданных модели и подставляет в поле — юзер
+  сам жмёт Save Profile. (Поля: LaunchSettingUiSchema
+  `ContextSizeReload` → `RegisterContextSizeReloadEditor` → контроллер
+  `ReloadContextSizeFromModelAsync`; GGUF читается в фоне.)
 - **Сборку релиза делать ТОЛЬКО через `scripts/build-ext-release.ps1`**
   (см. «Релизный цикл» п.2) — НЕ руками и НЕ вендорским `publish-app.ps1`
   в одиночку: он не собирает Updater и не делает zip «ровно 4 exe».

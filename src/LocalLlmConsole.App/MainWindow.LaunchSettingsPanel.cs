@@ -38,7 +38,8 @@ public partial class MainWindow
                 DefaultExt: "",
                 FileName: File.Exists(initialPath) ? Path.GetFileName(initialPath) : "",
                 InitialDirectory: File.Exists(initialPath) ? Path.GetDirectoryName(initialPath) ?? "" : ""), this),
-            initialPath => _coreServices.App.FileSystemDialogs.PickFolder(initialPath)));
+            initialPath => _coreServices.App.FileSystemDialogs.PickFolder(initialPath),
+            ReloadContextSizeFromModelAsync));
 
         ApplyLaunchSettingsPanelControls(panel);
         AttachLaunchSettingsChangeHandlers();

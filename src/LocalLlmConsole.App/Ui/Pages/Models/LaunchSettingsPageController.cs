@@ -277,4 +277,52 @@ public sealed class LaunchSettingsPageController
             currentProfile,
             _panel.SaveAsNewModelName));
     }
+
+    /// <summary>
+    /// Кнопка «⟳ GGUF» у поля «Размер контекста»: перечитывает
+    /// context_length из метаданных выбранной модели и подставляет
+    /// значение в поле формы. Сохранённый профиль НЕ трогается —
+    /// пользователь сам жмёт Save Profile.
+    /// </summary>
+    public async Task ReloadContextSizeFromModelAsync()
+    {
+        var model = _actions.SelectedModel();
+        if (model is null)
+        {
+            _actions.SetStatus("Select a model to re-read its context size.");
+            return;
+        }
+
+        var contextLength = await Task.Run(() =>
+        {
+            try
+            {
+                var gguf = GgufMetadataReader.TryRead(model.ModelPath);
+                if (gguf is null || gguf.Count == 0) return 0;
+                var architecture = gguf.TryGetValue("general.architecture", out var architectureValue)
+                    ? architectureValue?.ToString() ?? ""
+                    : "";
+                return ModelCapabilityService.ContextLength(gguf, architecture);
+            }
+            catch
+            {
+                return 0;
+            }
+        });
+
+        if (contextLength <= 0)
+        {
+            _actions.SetStatus($"Could not read context length from GGUF metadata of {model.Name}.");
+            return;
+        }
+
+        var contextSizeBox = _panel.FormControls.ContextSizeBox;
+        if (contextSizeBox is not null)
+        {
+            contextSizeBox.Text = contextLength.ToString(CultureInfo.InvariantCulture);
+            _actions.UpdateContextSizeSuggestion();
+        }
+
+        _actions.SetStatus($"Context size re-read from model GGUF: {contextLength:N0}. Review and save the profile to apply.");
+    }
 }

@@ -25,7 +25,8 @@ public sealed record LaunchSettingsPanelRequest(
     Func<Task> ChooseMtpHeadAsync,
     Action SaveAsNewNameChanged,
     Func<string, string?> ChooseAdditionalFile,
-    Func<string, string?> ChooseAdditionalDirectory);
+    Func<string, string?> ChooseAdditionalDirectory,
+    Func<Task> ReloadContextSizeFromModelAsync);
 
 public sealed class LaunchSettingsPanelControls
 {

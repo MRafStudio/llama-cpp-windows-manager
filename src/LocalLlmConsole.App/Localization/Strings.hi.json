@@ -921,5 +921,7 @@
   "ModelGroups.ChangeGroup": "समूह बदलें…",
   "ModelGroups.Column.Group": "समूह",
   "ModelGroups.RemoveFromGroup": "समूह से हटाएं",
-  "Overview.LaunchProfileTooltip": "इस मॉडल के शुरू होने पर उपयोग की जाने वाली नामित लॉन्च सेटिंग्स चुनें।"
+  "Overview.LaunchProfileTooltip": "इस मॉडल के शुरू होने पर उपयोग की जाने वाली नामित लॉन्च सेटिंग्स चुनें।",
+  "Launch.ReloadContextSizeButton": "⟳ GGUF",
+  "Tooltip.ReloadContextSizeButton": "Re-read the context size from this model's GGUF metadata and fill the field. Save the profile to apply it."
 }

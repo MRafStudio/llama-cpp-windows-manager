@@ -921,5 +921,7 @@
   "ModelGroups.ChangeGroup": "グループを変更…",
   "ModelGroups.Column.Group": "グループ",
   "ModelGroups.RemoveFromGroup": "グループから削除",
-  "Overview.LaunchProfileTooltip": "このモデルが起動する際に使用される名前付き起動設定を選択します。"
+  "Overview.LaunchProfileTooltip": "このモデルが起動する際に使用される名前付き起動設定を選択します。",
+  "Launch.ReloadContextSizeButton": "⟳ GGUF",
+  "Tooltip.ReloadContextSizeButton": "Re-read the context size from this model's GGUF metadata and fill the field. Save the profile to apply it."
 }

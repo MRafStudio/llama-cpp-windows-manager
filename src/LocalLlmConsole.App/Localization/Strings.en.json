@@ -123,6 +123,8 @@
   "Tooltip.SaveAsNewButton": "Attach these settings to the selected model as a new named launch profile.",
   "Launch.Section.Basic": "Basic Launch",
   "Launch.Field.ContextSize": "Context size",
+  "Launch.ReloadContextSizeButton": "⟳ GGUF",
+  "Tooltip.ReloadContextSizeButton": "Re-read the context size from this model's GGUF metadata and fill the field. Save the profile to apply it.",
   "Launch.Field.Threads": "Threads",
   "Launch.Field.GpuLayers": "GPU layers",
   "Launch.Field.GpuMode": "GPU mode",

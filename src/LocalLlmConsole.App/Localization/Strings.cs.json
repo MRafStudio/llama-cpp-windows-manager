@@ -921,5 +921,7 @@
   "ModelGroups.ChangeGroup": "Změnit skupinu…",
   "ModelGroups.Column.Group": "Skupina",
   "ModelGroups.RemoveFromGroup": "Odebrat ze skupiny",
-  "Overview.LaunchProfileTooltip": "Vyberte pojmenovaná nastavení spuštění používaná při spuštění tohoto modelu."
+  "Overview.LaunchProfileTooltip": "Vyberte pojmenovaná nastavení spuštění používaná při spuštění tohoto modelu.",
+  "Launch.ReloadContextSizeButton": "⟳ GGUF",
+  "Tooltip.ReloadContextSizeButton": "Re-read the context size from this model's GGUF metadata and fill the field. Save the profile to apply it."
 }

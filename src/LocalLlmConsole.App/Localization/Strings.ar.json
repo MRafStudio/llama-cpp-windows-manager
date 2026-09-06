@@ -921,5 +921,7 @@
   "ModelGroups.RemoveFromGroup": "إزالة من المجموعة",
   "Overview.LaunchProfileTooltip": "اختر إعدادات الإطلاق المسماة المستخدمة عند بدء هذا النموذج.",
   "Overview.EndpointInspectionTooltip": "انقر نقرًا مزدوجًا فوق نموذج تم تحميله أو صف بوابة لفحص تقرير نقطة النهاية المباشرة. انقر على نقطة نهاية واجهة برمجة التطبيقات (API) مباشرة لنفس التقرير.",
-  "Launch.SaveProfileTooltip": "احفظ التغييرات على ملف تعريف الإطلاق المسمى المحدد."
+  "Launch.SaveProfileTooltip": "احفظ التغييرات على ملف تعريف الإطلاق المسمى المحدد.",
+  "Launch.ReloadContextSizeButton": "⟳ GGUF",
+  "Tooltip.ReloadContextSizeButton": "Re-read the context size from this model's GGUF metadata and fill the field. Save the profile to apply it."
 }

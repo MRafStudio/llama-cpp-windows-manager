@@ -9,6 +9,32 @@ namespace LocalLlmConsole;
 
 public static partial class LaunchSettingsPanelFactory
 {
+    /// <summary>«Размер контекста»: поле + кнопка «⟳ GGUF» (перечитать context_length из модели, профиль не трогать — юзер сам Save).</summary>
+    private static Grid RegisterContextSizeReloadEditor(string id, WpfTextBox textBox, Func<Task> reloadAsync, IDictionary<string, FrameworkElement> editors)
+    {
+        var grid = new Grid();
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.Children.Add(textBox);
+        var button = new WpfButton
+        {
+            Content = Loc.T("Launch.ReloadContextSizeButton"),
+            Height = 28,
+            MinHeight = 28,
+            Margin = new Thickness(4, 0, 4, 1),
+            Padding = new Thickness(10, 2, 10, 2),
+            VerticalContentAlignment = VerticalAlignment.Center,
+            ToolTip = Loc.T("Tooltip.ReloadContextSizeButton")
+        };
+        button.Click += async (_, _) => await reloadAsync();
+        Grid.SetColumn(textBox, 0);
+        Grid.SetColumn(button, 1);
+        grid.Children.Add(button);
+        editors[id] = textBox;
+        editors[id + ".button"] = button;
+        return grid;
+    }
+
     private static LaunchSettingsFormControls AddLaunchSections(
         StackPanel panel,
         LaunchSettingsPanelBuilder builder,
@@ -80,6 +106,8 @@ public static partial class LaunchSettingsPanelFactory
                     definition.Id, textBox, DraftModelPicker(textBox, request.ChooseDraftModelAsync, out var button), button, editors),
                 LaunchSettingEditorKind.MtpHead => RegisterPicker(
                     definition.Id, textBox, MtpHeadPicker(textBox, request.ChooseMtpHeadAsync, out var button), button, editors),
+                LaunchSettingEditorKind.ContextSizeReload => RegisterContextSizeReloadEditor(
+                    definition.Id, textBox, request.ReloadContextSizeFromModelAsync, editors),
                 _ => textBox
             };
         }

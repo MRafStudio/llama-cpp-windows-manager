@@ -921,5 +921,7 @@
   "ModelGroups.RemoveFromGroup": "Премахни от група",
   "Overview.LaunchProfileTooltip": "Изберете имените настройки за стартиране, използвани, когато този модел стартира.",
   "Overview.EndpointInspectionTooltip": "Щракнете двукратно върху зареден модел или ред на шлюза, за да проверите отчета за крайната точка в реално време. Кликнете директно върху крайната точка на приложния програмен интерфейс (API) за същия отчет.",
-  "Launch.SaveProfileTooltip": "Запазете промените в избрания именуван профил за стартиране."
+  "Launch.SaveProfileTooltip": "Запазете промените в избрания именуван профил за стартиране.",
+  "Launch.ReloadContextSizeButton": "⟳ GGUF",
+  "Tooltip.ReloadContextSizeButton": "Re-read the context size from this model's GGUF metadata and fill the field. Save the profile to apply it."
 }

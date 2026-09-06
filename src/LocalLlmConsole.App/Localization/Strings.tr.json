@@ -921,5 +921,7 @@
   "Help.Article.updates-and-recovery.Detail.3": "Use Logs for app, runtime, job, and bounded redacted Control API activity.",
   "Help.Article.updates-and-recovery.Action.1": "Check Updates",
   "Help.Article.updates-and-recovery.Action.2": "Open Logs",
-  "Help.Article.updates-and-recovery.Action.3": "Open Metrics"
+  "Help.Article.updates-and-recovery.Action.3": "Open Metrics",
+  "Launch.ReloadContextSizeButton": "⟳ GGUF",
+  "Tooltip.ReloadContextSizeButton": "Re-read the context size from this model's GGUF metadata and fill the field. Save the profile to apply it."
 }

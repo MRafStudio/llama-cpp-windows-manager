@@ -6,7 +6,8 @@ public enum LaunchSettingEditorKind
     Choice,
     VisionProjector,
     DraftModel,
-    MtpHead
+    MtpHead,
+    ContextSizeReload
 }
 
 public sealed record LaunchSettingUiDefinition(
@@ -22,7 +23,7 @@ public static class LaunchSettingUiSchema
 {
     public static IReadOnlyList<LaunchSettingUiDefinition> Definitions { get; } =
     [
-        Text(nameof(AppSettings.ContextSize), "Basic", "ContextSize"),
+        Text(nameof(AppSettings.ContextSize), "Basic", "ContextSize") with { Editor = LaunchSettingEditorKind.ContextSizeReload },
         Text(nameof(AppSettings.Threads), "Basic", "Threads"),
         Text(nameof(AppSettings.GpuLayers), "Basic", "GpuLayers"),
         Choice(nameof(AppSettings.GpuMode), "Basic", "GpuMode", LaunchSettingMetadataService.GpuModeOptions),

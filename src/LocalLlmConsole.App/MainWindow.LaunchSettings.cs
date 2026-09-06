@@ -32,6 +32,9 @@ public partial class MainWindow
     private Task ChooseDraftModelPathAsync()
         => _launchSettingsController.ChooseDraftModelAsync();
 
+    private Task ReloadContextSizeFromModelAsync()
+        => _launchSettingsController.ReloadContextSizeFromModelAsync();
+
     private AppSettings ReadLaunchSettingsFromControls()
         => _launchSettingsController.ReadFromControls();
 

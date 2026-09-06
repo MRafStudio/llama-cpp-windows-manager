@@ -921,5 +921,7 @@
   "ModelGroups.ChangeGroup": "Cambia gruppo…",
   "ModelGroups.Column.Group": "Gruppo",
   "ModelGroups.RemoveFromGroup": "Rimuovi dal gruppo",
-  "Overview.LaunchProfileTooltip": "Scegli le impostazioni di avvio nominate utilizzate quando questo modello si avvia."
+  "Overview.LaunchProfileTooltip": "Scegli le impostazioni di avvio nominate utilizzate quando questo modello si avvia.",
+  "Launch.ReloadContextSizeButton": "⟳ GGUF",
+  "Tooltip.ReloadContextSizeButton": "Re-read the context size from this model's GGUF metadata and fill the field. Save the profile to apply it."
 }

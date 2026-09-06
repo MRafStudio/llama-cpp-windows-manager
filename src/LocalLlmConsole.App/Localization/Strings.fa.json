@@ -921,5 +921,7 @@
   "ModelGroups.ChangeGroup": "تغییر گروه...",
   "ModelGroups.Column.Group": "گروه",
   "ModelGroups.RemoveFromGroup": "حذف از گروه",
-  "Overview.LaunchProfileTooltip": "تنظیمات اجرای نام‌گذاری شده‌ای که هنگام شروع این مدل استفاده می‌شود را انتخاب کنید."
+  "Overview.LaunchProfileTooltip": "تنظیمات اجرای نام‌گذاری شده‌ای که هنگام شروع این مدل استفاده می‌شود را انتخاب کنید.",
+  "Launch.ReloadContextSizeButton": "⟳ GGUF",
+  "Tooltip.ReloadContextSizeButton": "Re-read the context size from this model's GGUF metadata and fill the field. Save the profile to apply it."
 }
