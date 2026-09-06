@@ -20,7 +20,12 @@ public sealed record AppUpdateInfo(
     string ServiceAssetUrl = "",
     string ServiceChecksumAssetName = "",
     string ServiceChecksumAssetUrl = "",
-    string ServiceExpectedSha256 = "");
+    string ServiceExpectedSha256 = "",
+    string UpdaterAssetName = "",
+    string UpdaterAssetUrl = "",
+    string UpdaterChecksumAssetName = "",
+    string UpdaterChecksumAssetUrl = "",
+    string UpdaterExpectedSha256 = "");
 
 public sealed record AppUpdateInstallPlan(
     string ScriptPath,
@@ -254,13 +259,29 @@ public sealed partial class AppUpdateService
     /// Файлы УЖЕ скачаны и проверены GUI — Updater только применяет их:
     /// UAC (если есть служба), KILL родителя, стоп/замена/старт службы,
     /// автозапуск приложения. Запускается скрыто (без консольного окна).
+    /// Если GUI скачал свежий Updater (files.UpdaterFilePath) — сперва
+    /// подменяем им Updater рядом с приложением, чтобы он не устаревал.
     /// </summary>
     public void StartUpdaterProcess(AppUpdateInfo update, UpdateDownloadResult files, int currentProcessId)
     {
-        var updaterPath = Path.Combine(AppContext.BaseDirectory, "LocalLlmConsole.Updater.exe");
+        var targetDir = AppContext.BaseDirectory;
+        var updaterPath = Path.Combine(targetDir, "LocalLlmConsole.Updater.exe");
+
+        // Свежий Updater из релиза: заменяем им локальный (пока тот не запущен).
+        if (!string.IsNullOrWhiteSpace(files.UpdaterFilePath) && File.Exists(files.UpdaterFilePath))
+        {
+            try
+            {
+                File.Copy(files.UpdaterFilePath, updaterPath, overwrite: true);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Trace.TraceWarning($"Не удалось обновить Updater рядом с приложением: {ex.Message}");
+            }
+        }
+
         if (!File.Exists(updaterPath))
             throw new InvalidOperationException($"Updater not found next to the application: {updaterPath}");
-        var targetDir = AppContext.BaseDirectory;
         var psi = new ProcessStartInfo
         {
             FileName = updaterPath,
@@ -269,7 +290,7 @@ public sealed partial class AppUpdateService
             WindowStyle = ProcessWindowStyle.Hidden,
             WorkingDirectory = targetDir
         };
-        // ArgumentList экранирует аргументы сам (BaseDirectory заканчивается на '\').
+        // ArgumentList экранирует аргументы сам (BaseDirectory заканчивается на '\\').
         psi.ArgumentList.Add("--version");
         psi.ArgumentList.Add(update.LatestVersion);
         psi.ArgumentList.Add("--target-dir");
@@ -292,7 +313,7 @@ public sealed partial class AppUpdateService
     }
 
     /// <summary>Результат скачивания: пути к проверенным файлам (temp).</summary>
-    public sealed record UpdateDownloadResult(string AppFilePath, string? ServiceFilePath);
+    public sealed record UpdateDownloadResult(string AppFilePath, string? ServiceFilePath, string? UpdaterFilePath = null);
 
     /// <summary>
     /// Скачивает App (и Service, если служба установлена) в %TEMP%\LlamaUpdater\<version>
@@ -327,8 +348,20 @@ public sealed partial class AppUpdateService
             VerifySha256(servicePath, serviceSha, "службы");
         }
 
+        // Свежий Updater (всегда, если есть в релизе) — чтобы локальный не устаревал.
+        string? updaterPath = null;
+        if (!string.IsNullOrWhiteSpace(update.UpdaterAssetUrl))
+        {
+            updaterPath = Path.Combine(tempDir, "LocalLlmConsole.Updater.exe");
+            progress?.Report(new UpdateProgressState(-1, "Скачивание Updater..."));
+            await DownloadAssetWithProgressAsync(update.UpdaterAssetUrl, updaterPath, "Updater", progress, cancellationToken);
+            var updaterSha = await FetchSha256Async(update.UpdaterChecksumAssetUrl, cancellationToken)
+                ?? throw new InvalidOperationException("Не удалось получить контрольную сумму Updater.");
+            VerifySha256(updaterPath, updaterSha, "Updater");
+        }
+
         progress?.Report(new UpdateProgressState(100, "Загрузка завершена, всё проверено."));
-        return new UpdateDownloadResult(appPath, servicePath);
+        return new UpdateDownloadResult(appPath, servicePath, updaterPath);
     }
 
     private async Task DownloadAssetWithProgressAsync(

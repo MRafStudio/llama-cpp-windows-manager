@@ -15,6 +15,7 @@ namespace LocalLlmConsole.Updater;
 internal static class Program
 {
     private const int MaxParentWaitSeconds = 10;
+    private const int MaxFileReplaceSeconds = 60;  // сколько ждём освобождения занятого файла
 
     private sealed class Options
     {
@@ -28,12 +29,16 @@ internal static class Program
     }
 
     private static string LogPath = "";
+
+    private static string AssemblyVersion =>
+        typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "?";
+
     private static int Main(string[] args)
     {
         var options = ParseArgs(args);
         LogPath = Path.Combine(Path.GetTempPath(), "LlamaUpdater", "update.log");
         Directory.CreateDirectory(Path.GetDirectoryName(LogPath)!);
-        Log($"Updater v2.3.2.2 started. Args: {string.Join(" ", args)}");
+        Log($"Updater v{AssemblyVersion} started. Args: {string.Join(" ", args)}");
 
         try
         {
@@ -194,9 +199,10 @@ internal static class Program
             {
                 FileName = Environment.ProcessPath!,
                 UseShellExecute = true,
-                Verb = "runas",
-                Arguments = string.Join(" ", args.Select(a => a.Contains(' ') ? $"\"{a}\"" : a))
+                Verb = "runas"
             };
+            foreach (var arg in args)
+                psi.ArgumentList.Add(arg);
             return Process.Start(psi) != null;
         }
         catch
@@ -210,7 +216,12 @@ internal static class Program
         if (parentPid <= 0) return;
         var deadline = DateTime.UtcNow.AddSeconds(MaxParentWaitSeconds);
         Process? parent = null;
-        try { parent = Process.GetProcessById(parentPid); } catch { /* уже закрыт */ }
+        try { parent = Process.GetProcessById(parentPid); }
+        catch
+        {
+            Log($"GUI (PID {parentPid}) уже закрыт — ждать не нужно.");
+            return;
+        }
 
         while (parent != null && DateTime.UtcNow < deadline)
         {
@@ -229,6 +240,8 @@ internal static class Program
                     Log($"GUI не закрылся за {MaxParentWaitSeconds} сек — принудительно KILL PID {parentPid}.");
                     parent.Kill(entireProcessTree: true);
                     parent.WaitForExit(5000);
+                    // Даём ОС освободить образ exe после убийства процесса.
+                    Thread.Sleep(1500);
                 }
             }
             catch (Exception ex)
@@ -288,17 +301,39 @@ internal static class Program
         }
 
         var backup = target + ".bak";
-        try
+        var deadline = DateTime.UtcNow.AddSeconds(MaxFileReplaceSeconds);
+        var lastError = "";
+
+        while (true)
         {
-            Log($"{what}: заменяю {target}...");
-            File.Replace(source, target, backup, ignoreMetadataErrors: true);
+            try
+            {
+                Log($"{what}: заменяю {target}...");
+                File.Replace(source, target, backup, ignoreMetadataErrors: true);
+                Log($"{what}: файл заменён.");
+                return;
+            }
+            catch (IOException ex)
+            {
+                // Файл занят (антивирус/индексатор/процесс ещё не отпустил образ).
+                // Ждём освобождения и пробуем снова.
+                lastError = ex.Message;
+                if (DateTime.UtcNow >= deadline)
+                {
+                    Log($"{what}: файл так и не освободился за {MaxFileReplaceSeconds} сек: {lastError}");
+                    throw;
+                }
+                Log($"{what}: файл занят ({ex.Message}) — жду освобождения...");
+                Thread.Sleep(1000);
+            }
+            catch
+            {
+                // File.Replace не сработал (не IOException — другая ошибка) — копируем поверх.
+                File.Copy(source, target, overwrite: true);
+                Log($"{what}: файл заменён (копированием).");
+                return;
+            }
         }
-        catch
-        {
-            // File.Replace не сработал (антивирус/блокировка) — копируем поверх.
-            File.Copy(source, target, overwrite: true);
-        }
-        Log($"{what}: файл заменён.");
     }
 
     private static void Log(string message)

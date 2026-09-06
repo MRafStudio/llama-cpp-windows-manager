@@ -53,6 +53,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 Source: "{#SourceDir}\{#AppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceDir}\llwmctl.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#SourceDir}\LocalLlmConsole.Updater.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceDir}\AGENTS.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceDir}\agent.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceDir}\docs\CONTROL_API.md"; DestDir: "{app}\docs"; Flags: ignoreversion
