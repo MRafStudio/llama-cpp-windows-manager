@@ -142,9 +142,9 @@ internal static class Program
                 StartService(options.ServiceName);
             }
 
-            // 7. Запускаем приложение.
+            // 7. Запускаем приложение (только если это настоящий exe).
             var appPath = Path.Combine(options.TargetDir, "LlamaCppWindowsManager.exe");
-            if (File.Exists(appPath))
+            if (File.Exists(appPath) && LooksLikeExecutable(appPath))
             {
                 Log($"Запускаю приложение: {appPath}");
                 // Запуск через explorer.exe: (1) снимает админ-токен (приложение не
@@ -215,6 +215,26 @@ internal static class Program
               --service-file <path>      путь к скачанному и проверенному exe службы (необязательно)
               --parent-pid <pid>         PID приложения, которое нужно дождаться/убить
             """);
+    }
+
+    /// <summary>
+    /// Проверяет, что файл — настоящий PE-исполняемый (сигнатура MZ),
+    /// а не текстовый мусор (защита от случайного запуска).
+    /// </summary>
+    private static bool LooksLikeExecutable(string path)
+    {
+        try
+        {
+            using var stream = File.OpenRead(path);
+            if (stream.Length < 2) return false;
+            var header = new byte[2];
+            stream.Read(header, 0, 2);
+            return header[0] == (byte)'M' && header[1] == (byte)'Z';
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     /// <summary>
