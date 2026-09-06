@@ -64,6 +64,25 @@ loopback API управления внутри запущенного Manager, �
   модели; от него именно ДЕЛИМ контекст в ответах API. При смене потоков
   ContextSize в профиле НЕ пересчитывать (он остаётся GGUF).
 
+## CRLF/кодировки на Windows — вечная боль, НЕ наступать дважды
+
+- Файлы, созданные PowerShell (`Add-Content`, `Out-File`, `Get-Content ... | ...`) —
+  **UTF-16 или CRLF**. Читать их bash-циклами (`while read ...; do ...`) НЕЛЬЗЯ:
+  `\r` прилипает к последнему слову строки и ломает имена/значения
+  (например, создаёт файл `LlamaCppWindowsManager.exe\r.sha256`).
+- Обходы:
+  1. PowerShell → файл → читать `read_file` (НЕ bash-инструментами);
+  2. Если нужно скормить содержимое bash: писать в файл через
+     `[System.IO.File]::WriteAllText(path, text)` (UTF-8 без BOM, LF) или
+     `write_file` (Hermes), затем читать bash'ем;
+  3. Для генерации набора `.sha256`-файлов из общего списка — писать каждый
+     файл отдельной командой `[System.IO.File]::WriteAllText` (НЕ циклом
+     `while read` по CRLF-файлу), либо сначала прогнать через `tr -d '\r'`.
+- `write_file` пишет LF — для .bat/.cmd/`.iss` СТРОГО нужен CRLF (см. правила
+  бати); для промежуточных txt/hash-файлов LF допустим.
+- Вывод `dotnet test`/PowerShell в terminal может приходить в UTF-16
+  (кракозябры `呓呁...`) — писать в файл и читать read_file.
+
 ## ⚠️ Чеклист: НЕ СДВИНУТЬ ПОЗИЦИОННЫЕ АРГУМЕНТЫ (урок 2.3.2.7)
 
 record `AppUpdateInfo` (AppUpdateService.cs) рос: добавились Service/Updater/Zip-блоки
