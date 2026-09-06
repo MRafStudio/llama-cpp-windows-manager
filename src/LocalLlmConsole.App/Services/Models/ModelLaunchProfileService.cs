@@ -126,7 +126,6 @@ public sealed class ModelLaunchProfileService
     private const int QwenReasoningBudget = 8192;
     private const int QwenParallelSlots = 2;
     private const string QwenCustomParameters = "--n-predict 65536";
-    private const int QwenMinContextSize = 524288;
 
     private static ModelLaunchSettings ApplyModelContext(ModelLaunchSettings settings, ModelRecord model)
     {
@@ -138,6 +137,11 @@ public sealed class ModelLaunchProfileService
             var architecture = gguf.TryGetValue("general.architecture", out var architectureValue)
                 ? architectureValue?.ToString() ?? ""
                 : "";
+            // ЕДИНСТВЕННЫЙ источник правды для контекста — метаданные GGUF
+            // (ModelCapabilityService.ContextLength). Никаких «трюков» с делением
+            // пополам или фиксированных значений для отдельных архитектур:
+            // модель заявляет 1M — профиль получает 1M. Эвристика (DefaultContextSize,
+            // 128k) применяется только когда GGUF недоступен.
             var contextLength = ModelCapabilityService.ContextLength(gguf, architecture);
             settings = contextLength > 0
                 ? settings with { ContextSize = contextLength }
@@ -146,7 +150,6 @@ public sealed class ModelLaunchProfileService
             {
                 settings = settings with
                 {
-                    ContextSize = 524288,
                     ReasoningBudget = QwenReasoningBudget,
                     ParallelSlots = QwenParallelSlots,
                     CustomParameters = QwenCustomParameters,

@@ -31,6 +31,23 @@ public static class ModelGatewayResponseWriter
                 .Select(model =>
                 {
                     var metadata = ModelGatewayMetadataService.Inspect(model.Model);
+                    var settings = model.Profile.Settings;
+                    // ВАЖНО: llama-server при --parallel N САМ делит контекстное окно
+                    // на N слотов, а сверху ещё обрезает до реального n_ctx_train
+                    // модели (не даст больше GGUF-контекста без rope-scaling).
+                    // Клиент (Hermes) берёт context_length из этого ответа и по нему
+                    // планирует сжатие (обычно с 50%). Если отдать полное окно,
+                    // клиент будет думать, что доступен 1M, тогда как реально
+                    // слоту достаётся 1M/N — сжатие наступит слишком поздно.
+                    // Наружу отдаём РЕАЛЬНО доступный контекст одного запроса:
+                    // min(ContextSize, n_ctx_train) / параллельные запросы.
+                    var parallel = Math.Max(1, settings.ParallelSlots);
+                    var trainContext = metadata.TrainingContext ?? 0;
+                    var requested = settings.ContextSize > 0 ? settings.ContextSize : trainContext;
+                    var effective = trainContext > 0 && requested > 0
+                        ? Math.Min(requested, trainContext)
+                        : Math.Max(requested, trainContext);
+                    var perSlotContext = effective > 0 ? effective / parallel : 0;
                     return new
                     {
                         id = model.Id,
@@ -42,7 +59,8 @@ public static class ModelGatewayResponseWriter
                         profile_id = model.Profile.Id,
                         profile_name = model.Profile.Name,
                         is_default_profile = model.Profile.IsDefault,
-                        context_length = model.Profile.Settings.ContextSize,
+                        context_length = perSlotContext,
+                        parallel_slots = parallel,
                         meta = new
                         {
                             n_ctx_train = metadata.TrainingContext,
