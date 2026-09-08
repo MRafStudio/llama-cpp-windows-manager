@@ -11,10 +11,10 @@
     <AssemblyTitle>llama.cpp Windows Manager</AssemblyTitle>
     <Product>llama.cpp Windows Manager</Product>
     <RepositoryUrl>https://github.com/MRafStudio/llama-cpp-windows-manager</RepositoryUrl>
-    <Version>2.3.2.9</Version>
-    <AssemblyVersion>2.3.2.9</AssemblyVersion>
-    <FileVersion>2.3.2.9</FileVersion>
-    <InformationalVersion>v2.3.2.9</InformationalVersion>
+    <Version>2.3.2.10</Version>
+    <AssemblyVersion>2.3.2.10</AssemblyVersion>
+    <FileVersion>2.3.2.10</FileVersion>
+    <InformationalVersion>v2.3.2.10</InformationalVersion>
     <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
