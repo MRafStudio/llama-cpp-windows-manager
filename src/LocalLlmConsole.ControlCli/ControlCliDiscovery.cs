@@ -24,13 +24,7 @@ internal static class ControlCliDiscovery
         var paths = new List<string>();
         if (args.Value("connection") is { Length: > 0 } explicitPath) paths.Add(explicitPath);
         if (args.Value("workspace") is { Length: > 0 } workspace) paths.Add(Path.Combine(workspace, "state", "control.json"));
-        foreach (var variable in new[] { "LLAMA_CPP_WINDOWS_MANAGER_WORKSPACE", "LLAMA_CPP_CONSOLE_WORKSPACE", "LOCAL_LLM_CONSOLE_WORKSPACE" })
-        {
-            if (Environment.GetEnvironmentVariable(variable) is { Length: > 0 } root)
-                paths.Add(Path.Combine(root, "state", "control.json"));
-        }
-        paths.Add(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "llama.cpp Windows Manager", "control.json"));
-        paths.Add(Path.Combine(AppContext.BaseDirectory, "data", "state", "control.json"));
+        paths.Add(Path.Combine(AppContext.BaseDirectory, "state", "control.json"));
 
         foreach (var path in paths.Distinct(StringComparer.OrdinalIgnoreCase))
         {

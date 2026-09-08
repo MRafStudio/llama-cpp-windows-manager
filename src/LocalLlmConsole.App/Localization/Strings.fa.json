@@ -878,7 +878,7 @@
   "Help.Article.two-apis.Title": "درک دو API",
   "Help.Article.ui-and-data.Action.1": "باز کردن Settings",
   "Help.Article.ui-and-data.Detail.1": "سوئیچ‌های UI کارت‌های Overview، لاگ‌ها، معیارها یا کنترل‌های Hugging Face را بدون غیرفعال کردن سرویس‌های آن‌ها مخفی می‌کنند.",
-  "Help.Article.ui-and-data.Detail.2": "نصب‌های قابل حمل (Portable) معمولاً مدل‌ها، محیط‌های اجرا، وضعیت، حافظه پنهان (cache) و لاگ‌ها را در پوشه data در کنار فایل اجرایی نگه می‌دارند.",
+  "Help.Article.ui-and-data.Detail.2": "Each copy keeps models, runtimes, state, cache, and logs beside LlamaCppWindowsManager.exe — never AppData and never a shared environment variable.",
   "Help.Article.ui-and-data.Detail.3": "شروع با Windows و رفتار کمینه‌سازی برای کاربر فعلی Windows اعمال می‌شود.",
   "Help.Article.ui-and-data.Summary": "تنظیمات به طور خودکار اعمال می‌شوند و فضای کاری برای فرآیند در حال اجرا ثابت می‌ماند.",
   "Help.Article.ui-and-data.Title": "رفتار برنامه و داده‌ها",

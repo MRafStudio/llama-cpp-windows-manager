@@ -878,7 +878,7 @@
   "Help.Article.two-apis.Title": "दो APIs को समझें",
   "Help.Article.ui-and-data.Action.1": "Settings खोलें",
   "Help.Article.ui-and-data.Detail.1": "UI स्विच ओवरव्यू कार्ड्स, लॉग्स, मेट्रिक्स, या Hugging Face कंट्रोल्स को उनकी सेवाओं को अक्षम किए बिना छिपा देते हैं।",
-  "Help.Article.ui-and-data.Detail.2": "पोर्टेबल इंस्टॉल्स आमतौर पर मॉडल्स, runtimes, स्टेट, कैश और लॉग्स को एक्जीक्यूटेबल के बगल में data के तहत रखते हैं।",
+  "Help.Article.ui-and-data.Detail.2": "Each copy keeps models, runtimes, state, cache, and logs beside LlamaCppWindowsManager.exe — never AppData and never a shared environment variable.",
   "Help.Article.ui-and-data.Detail.3": "Windows के साथ शुरू करें और वर्तमान Windows यूजर पर लागू होने वाले व्यवहार को कम करें।",
   "Help.Article.ui-and-data.Summary": "Settings स्वचालित रूप से लागू होते हैं और वर्कस्पेस चलने वाली प्रोसेस के लिए स्थिर रहता है।",
   "Help.Article.ui-and-data.Title": "ऐप व्यवहार और डेटा",

@@ -29,9 +29,8 @@ public sealed class StateStoreInitializationService
             {
                 await stateStore.InitializeAsync();
                 var loaded = await stateStore.GetAppSettingsAsync(request.WorkspaceRoot);
-                var settings = loaded with { WorkspaceRoot = request.WorkspaceRoot };
-                if (!string.Equals(loaded.WorkspaceRoot, request.WorkspaceRoot, StringComparison.OrdinalIgnoreCase))
-                    await stateStore.SaveAppSettingsAsync(settings);
+                var settings = await new WorkspaceRelocationService()
+                    .ApplyAsync(stateStore, loaded, request.WorkspaceRoot);
                 return new StateStoreInitializationResult(stateStore, settings);
             }
             catch (SqliteException) when (attempt == 0)

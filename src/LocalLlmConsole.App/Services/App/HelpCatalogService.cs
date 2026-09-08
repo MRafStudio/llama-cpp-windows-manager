@@ -280,7 +280,7 @@ public sealed partial class HelpCatalogService
             "Settings apply automatically and the workspace remains fixed for the running process.",
             [
                 "UI switches hide Overview cards, logs, metrics, or Hugging Face controls without disabling their services.",
-                "Portable installs normally keep models, runtimes, state, cache, and logs under data beside the executable.",
+                "Each copy keeps models, runtimes, state, cache, and logs beside LlamaCppWindowsManager.exe — never AppData and never a shared environment variable.",
                 "Start with Windows and minimize behavior apply to the current Windows user."
             ],
             [Action("Open Settings", "settings")],

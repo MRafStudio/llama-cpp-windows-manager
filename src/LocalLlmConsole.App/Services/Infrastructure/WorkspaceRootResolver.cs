@@ -1,71 +1,34 @@
-
 namespace LocalLlmConsole.Services;
 
+/// <summary>
+/// Workspace — всегда каталог, из которого запущен LlamaCppWindowsManager.exe.
+/// Переменные окружения и %LocalAppData% игнорируются: несколько копий
+/// (GPU/CPU из разных папок) не должны схлопываться в один путь.
+/// </summary>
 public static class WorkspaceRootResolver
 {
-    public const string EnvironmentVariable = "LLAMA_CPP_WINDOWS_MANAGER_WORKSPACE";
-    public const string LegacyConsoleEnvironmentVariable = "LLAMA_CPP_CONSOLE_WORKSPACE";
-    public const string LegacyEnvironmentVariable = "LOCAL_LLM_CONSOLE_WORKSPACE";
-
     public static string Resolve()
-        => Resolve(
-            FirstConfiguredWorkspace(),
-            Environment.ProcessPath,
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
+        => Resolve(Environment.ProcessPath);
 
-    public static string Resolve(string? configuredWorkspace, string? executablePath, string localAppDataRoot)
+    public static string Resolve(string? executablePath)
     {
-        if (!string.IsNullOrWhiteSpace(configuredWorkspace))
-            return Path.GetFullPath(configuredWorkspace);
-
-        var executableDirectory = string.IsNullOrWhiteSpace(executablePath)
-            ? ""
-            : Path.GetDirectoryName(Path.GetFullPath(executablePath)) ?? "";
-        var portableRoot = TryCreatePortableWorkspace(executableDirectory);
-        if (!string.IsNullOrWhiteSpace(portableRoot))
-            return portableRoot;
-
-        var fallbackRoot = string.IsNullOrWhiteSpace(localAppDataRoot)
-            ? AppContext.BaseDirectory
-            : localAppDataRoot;
-        var preferredFallback = Path.Combine(fallbackRoot, "llama.cpp Windows Manager");
-        var legacyProductFallback = Path.Combine(fallbackRoot, "llama.cpp Console");
-        var legacyCodeFallback = Path.Combine(fallbackRoot, "LocalLlmConsole");
-        if (!Directory.Exists(preferredFallback))
+        if (!string.IsNullOrWhiteSpace(executablePath))
         {
-            if (Directory.Exists(legacyProductFallback))
-                return Path.GetFullPath(legacyProductFallback);
-            if (Directory.Exists(legacyCodeFallback))
-                return Path.GetFullPath(legacyCodeFallback);
+            var full = Path.GetFullPath(executablePath);
+            if (File.Exists(full) || Path.HasExtension(full))
+            {
+                var directory = Path.GetDirectoryName(full);
+                if (!string.IsNullOrWhiteSpace(directory))
+                    return Path.GetFullPath(directory);
+            }
+
+            if (Directory.Exists(full))
+                return full;
         }
 
-        return Path.GetFullPath(preferredFallback);
-    }
-
-    private static string? FirstConfiguredWorkspace()
-    {
-        var configured = Environment.GetEnvironmentVariable(EnvironmentVariable);
-        if (!string.IsNullOrWhiteSpace(configured)) return configured;
-        configured = Environment.GetEnvironmentVariable(LegacyConsoleEnvironmentVariable);
-        if (!string.IsNullOrWhiteSpace(configured)) return configured;
-        return Environment.GetEnvironmentVariable(LegacyEnvironmentVariable);
-    }
-
-    private static string TryCreatePortableWorkspace(string executableDirectory)
-    {
-        if (string.IsNullOrWhiteSpace(executableDirectory)) return "";
-        var dataRoot = Path.GetFullPath(Path.Combine(executableDirectory, "data"));
-        try
-        {
-            Directory.CreateDirectory(dataRoot);
-            var probe = Path.Combine(dataRoot, $".write-test-{Guid.NewGuid():N}.tmp");
-            File.WriteAllText(probe, "");
-            File.Delete(probe);
-            return dataRoot;
-        }
-        catch
-        {
-            return "";
-        }
+        var baseDirectory = AppContext.BaseDirectory;
+        return string.IsNullOrWhiteSpace(baseDirectory)
+            ? Path.GetFullPath(Directory.GetCurrentDirectory())
+            : Path.GetFullPath(baseDirectory);
     }
 }

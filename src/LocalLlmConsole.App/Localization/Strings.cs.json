@@ -878,7 +878,7 @@
   "Help.Article.two-apis.Title": "Pochopení dvou API",
   "Help.Article.ui-and-data.Action.1": "Otevřít Nastavení",
   "Help.Article.ui-and-data.Detail.1": "Přepínače UI skrývají karty Přehledu, logy, metriky nebo ovládání Hugging Face bez vypnutí jejich služeb.",
-  "Help.Article.ui-and-data.Detail.2": "Přenositelné instalace obvykle uchovávají modely, runtimes, stav, cache a logy v adresáři data vedle spustitelného souboru.",
+  "Help.Article.ui-and-data.Detail.2": "Each copy keeps models, runtimes, state, cache, and logs beside LlamaCppWindowsManager.exe — never AppData and never a shared environment variable.",
   "Help.Article.ui-and-data.Detail.3": "Chování Start with Windows a minimize se vztahují ke aktuálnímu uživateli Windows.",
   "Help.Article.ui-and-data.Summary": "Nastavení se aplikují automaticky a pracovní prostor zůstává fixní pro běžící proces.",
   "Help.Article.ui-and-data.Title": "Chování aplikace a data",

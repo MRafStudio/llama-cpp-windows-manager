@@ -887,7 +887,7 @@
   "Help.Article.ui-and-data.Title": "App behavior and data",
   "Help.Article.ui-and-data.Summary": "Settings apply automatically and the workspace remains fixed for the running process.",
   "Help.Article.ui-and-data.Detail.1": "UI switches hide Overview cards, logs, metrics, or Hugging Face controls without disabling their services.",
-  "Help.Article.ui-and-data.Detail.2": "Portable installs normally keep models, runtimes, state, cache, and logs under data beside the executable.",
+  "Help.Article.ui-and-data.Detail.2": "Each copy keeps models, runtimes, state, cache, and logs beside LlamaCppWindowsManager.exe — never AppData and never a shared environment variable.",
   "Help.Article.ui-and-data.Detail.3": "Start with Windows and minimize behavior apply to the current Windows user.",
   "Help.Article.ui-and-data.Action.1": "Open Settings",
   "Help.Article.model-will-not-load.Title": "A model will not load",

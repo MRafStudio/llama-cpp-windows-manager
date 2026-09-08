@@ -876,7 +876,7 @@
   "Help.Article.two-apis.Title": "فهم واجهتي API",
   "Help.Article.ui-and-data.Action.1": "فتح الإعدادات",
   "Help.Article.ui-and-data.Detail.1": "تخفي مفاتيح تبديل واجهة المستخدم بطاقات نظرة عامة، أو السجلات، أو المقاييس، أو عناصر تحكم Hugging Face دون تعطيل خدماتها.",
-  "Help.Article.ui-and-data.Detail.2": "تحتفظ التثبيتات المحمولة عادةً بالنماذج، وبيئات التشغيل، والحالة، وذاكرة التخزين المؤقت، والسجلات تحت مجلد data بجانب الملف التنفيذي.",
+  "Help.Article.ui-and-data.Detail.2": "Each copy keeps models, runtimes, state, cache, and logs beside LlamaCppWindowsManager.exe — never AppData and never a shared environment variable.",
   "Help.Article.ui-and-data.Detail.3": "ابدأ بـ Windows وقم بتقليل السلوك المطبق على مستخدم Windows الحالي.",
   "Help.Article.ui-and-data.Summary": "تطبق الإعدادات تلقائيًا وتظل مساحة العمل ثابتة للعملية الجارية.",
   "Help.Article.ui-and-data.Title": "سلوك التطبيق والبيانات",

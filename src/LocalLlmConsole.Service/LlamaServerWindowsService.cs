@@ -85,9 +85,9 @@ public sealed class LlamaServerWindowsService : ServiceBase
             _process = Process.Start(psi)
                 ?? throw new InvalidOperationException("Не удалось запустить llama-server.");
 
-            // Вывод llama-server пишется в data/logs/llama-server-<timestamp>.log,
+            // Вывод llama-server пишется в logs/llama-server-<timestamp>.log,
             // чтобы «Журнал среды выполнения» в приложении показывал его в реальном времени.
-            var logPath = Path.Combine(AppContext.BaseDirectory, "data", "logs", $"llama-server-{DateTime.Now:yyyyMMdd-HHmmss}.log");
+            var logPath = Path.Combine(AppContext.BaseDirectory, "logs", $"llama-server-{DateTime.Now:yyyyMMdd-HHmmss}.log");
             var directory = Path.GetDirectoryName(logPath);
             if (!string.IsNullOrWhiteSpace(directory)) Directory.CreateDirectory(directory);
             _logWriter = new StreamWriter(logPath, append: false, System.Text.Encoding.UTF8) { AutoFlush = true };
@@ -196,5 +196,5 @@ public sealed class LlamaServerWindowsService : ServiceBase
     /// Путь к БД приложения (выбор/профили/среды выполняения) — рядом с exe службы.
     /// </summary>
     private static string DatabasePath
-        => Path.Combine(AppContext.BaseDirectory, "data", "state", "local-llm-console.db");
+        => Path.Combine(AppContext.BaseDirectory, "state", "local-llm-console.db");
 }

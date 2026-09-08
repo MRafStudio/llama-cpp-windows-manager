@@ -878,7 +878,7 @@
   "Help.Article.two-apis.Title": "2つのAPIを理解する",
   "Help.Article.ui-and-data.Action.1": "Settingsを開く",
   "Help.Article.ui-and-data.Detail.1": "UIスイッチは、サービスを無効にすることなく、Overviewカード、ログ、メトリクス、またはHugging Faceのコントロールを非表示にします。",
-  "Help.Article.ui-and-data.Detail.2": "ポータブルインストールでは、通常、モデル、ランタイム、状態、キャッシュ、ログは実行ファイルの隣にあるdataフォルダ内に保持されます。",
+  "Help.Article.ui-and-data.Detail.2": "Each copy keeps models, runtimes, state, cache, and logs beside LlamaCppWindowsManager.exe — never AppData and never a shared environment variable.",
   "Help.Article.ui-and-data.Detail.3": "Windowsの開始と最小化動作は、現在のWindowsユーザーに適用されます。",
   "Help.Article.ui-and-data.Summary": "設定は自動的に適用され、ワークスペースは実行中のプロセスのために固定されたままになります。",
   "Help.Article.ui-and-data.Title": "アプリの動作とデータ",

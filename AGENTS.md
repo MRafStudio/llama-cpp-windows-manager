@@ -175,7 +175,12 @@ record `AppUpdateInfo` (AppUpdateService.cs) рос: добавились Servic
   её ImagePath указывает в текущий каталог — GUI показывает жёлтый баннер и кнопку
   «Перенести службу» (`LlamaServiceViewModel.DetectLegacyService/MigrateCommand`);
   CanInstall блокируется, пока legacy не перенесена.
-- Служба хранит конфиг запуска в `data/state/service-config.json` (ExecutablePath
+- **Workspace = каталог exe.** `WorkspaceRootResolver` берёт папку
+  `LlamaCppWindowsManager.exe` и больше ничего: ни `LLAMA_CPP_WINDOWS_MANAGER_WORKSPACE`,
+  ни `%LocalAppData%`. Несколько копий (LlamaGPU / LlamaCPU) живут каждая в своём
+  каталоге. При переезде `WorkspaceRelocationService` переписывает абсолютные пути
+  в settings/models/runtimes/jobs/профилях и `state/service-config.json`.
+- Служба хранит конфиг запуска в `state/service-config.json` (ExecutablePath
   среды, аргументы, ModelId/ProfileId/RuntimeId). ВАЖНО: при переезде/переименовании
   каталога пути в этом файле устаревают — GUI обязан перечитывать актуальные пути
   из БД (таблицы runtimes/models) и пересохранять конфиг, а НЕ полагаться на
@@ -193,7 +198,7 @@ record `AppUpdateInfo` (AppUpdateService.cs) рос: добавились Servic
   пишет свой порт (8082) — это НЕ ошибка и НЕ «уехал не туда».
 - **Шлюз требует API-ключ** (без него 401). Ключ **ПЕРЕГЕНЕРИРУЕТСЯ при каждом
   перезапуске менеджера/сессии**: актуальный брать из
-  `data/state/active-runtime-sessions.json` → поле **`ModelApiKey`** (не `ApiKey`!).
+  `state/active-runtime-sessions.json` → поле **`ModelApiKey`** (не `ApiKey`!).
 - **Модель в запросах к шлюзу — ID из `/v1/models` шлюза**
   (например `qwen3.8-27b-ud-q4_k_xl`), НЕ человеческое имя и НЕ `default` → 404.
 - Профиль Default шлюза может указывать на другую модель (эталон 35B): запрос к
@@ -455,9 +460,10 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\test-release-g
 игнорируемое рабочее пространство, никогда не production-данные:
 
 ```powershell
-$developmentWorkspace = Join-Path $PWD "workspace/development"
-$env:LLAMA_CPP_WINDOWS_MANAGER_WORKSPACE = $developmentWorkspace
-Start-Process -FilePath .\src\LocalLlmConsole.App\bin\Release\net10.0-windows\win-x64\LlamaCppWindowsManager.exe -WorkingDirectory $PWD
+$developmentDir = Join-Path $PWD "workspace/development"
+New-Item -ItemType Directory -Force -Path $developmentDir | Out-Null
+Copy-Item .\src\LocalLlmConsole.App\bin\Release\net10.0-windows\win-x64\LlamaCppWindowsManager.exe $developmentDir
+Start-Process -FilePath (Join-Path $developmentDir "LlamaCppWindowsManager.exe") -WorkingDirectory $developmentDir
 ```
 
 Локальные сборки и пакеты не подписаны, если подпись явно не настроена.

@@ -514,58 +514,82 @@ VALUES ($model_id, $settings_json, $updated_at);
 
 
     [Fact]
-    public void WorkspaceRootDefaultsToDataFolderBesideExecutable()
+    public void WorkspaceRootIsExecutableDirectory()
     {
         var root = CreateTempRoot();
         var executable = Path.Combine(root, "LlamaCppWindowsManager.exe");
-        var localAppData = Path.Combine(root, "localappdata");
 
-        var workspace = WorkspaceRootResolver.Resolve(null, executable, localAppData);
+        var workspace = WorkspaceRootResolver.Resolve(executable);
 
-        Assert.Equal(Path.Combine(root, "data"), workspace, ignoreCase: true);
-        Assert.True(Directory.Exists(workspace));
+        Assert.Equal(Path.GetFullPath(root), workspace, ignoreCase: true);
     }
 
 
     [Fact]
-    public void WorkspaceRootEnvironmentOverrideWins()
+    public void WorkspaceRootIgnoresEnvironmentOverride()
     {
         var root = CreateTempRoot();
         var executable = Path.Combine(root, "LlamaCppWindowsManager.exe");
         var overrideRoot = Path.Combine(root, "custom-workspace");
-
-        var workspace = WorkspaceRootResolver.Resolve(overrideRoot, executable, Path.Combine(root, "localappdata"));
-
-        Assert.Equal(Path.GetFullPath(overrideRoot), workspace, ignoreCase: true);
+        var original = Environment.GetEnvironmentVariable("LLAMA_CPP_WINDOWS_MANAGER_WORKSPACE");
+        try
+        {
+            Environment.SetEnvironmentVariable("LLAMA_CPP_WINDOWS_MANAGER_WORKSPACE", overrideRoot);
+            var workspace = WorkspaceRootResolver.Resolve(executable);
+            Assert.Equal(Path.GetFullPath(root), workspace, ignoreCase: true);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("LLAMA_CPP_WINDOWS_MANAGER_WORKSPACE", original);
+        }
     }
 
 
     [Fact]
-    public void WorkspaceRootFallbackUsesNewNameButKeepsLegacyFolder()
+    public async Task WorkspaceRelocationRewritesCatalogPathsOnMove()
     {
-        var root = CreateTempRoot();
-        var localAppData = Path.Combine(root, "localappdata");
-        var freshWorkspace = WorkspaceRootResolver.Resolve(null, null, localAppData);
+        var oldRoot = CreateTempRoot();
+        var newRoot = CreateTempRoot();
+        var databasePath = Path.Combine(newRoot, "state", "local-llm-console.db");
+        Directory.CreateDirectory(Path.GetDirectoryName(databasePath)!);
+        await using var store = new StateStore(databasePath);
+        await store.InitializeAsync();
 
-        Assert.Equal(Path.Combine(localAppData, "llama.cpp Windows Manager"), freshWorkspace, ignoreCase: true);
-        Assert.Equal("LLAMA_CPP_WINDOWS_MANAGER_WORKSPACE", WorkspaceRootResolver.EnvironmentVariable);
-        Assert.Equal("LLAMA_CPP_CONSOLE_WORKSPACE", WorkspaceRootResolver.LegacyConsoleEnvironmentVariable);
-        Assert.Equal("LOCAL_LLM_CONSOLE_WORKSPACE", WorkspaceRootResolver.LegacyEnvironmentVariable);
+        var oldSettings = AppSettings.CreateDefault(oldRoot);
+        await store.SaveAppSettingsAsync(oldSettings);
+        await store.UpsertModelAsync(new ModelRecord(
+            "moved-model",
+            "Moved",
+            Path.Combine(oldRoot, "models", "model.gguf"),
+            OwnershipKind.External,
+            "{\"sourceFolder\":\"" + oldRoot.Replace("\\", "\\\\") + "\\\\models\"}",
+            DateTimeOffset.UtcNow));
+        await store.UpsertRuntimeAsync(new RuntimeRecord(
+            "moved-runtime",
+            "Moved runtime",
+            RuntimeMode.Native,
+            RuntimeBackend.Cpu,
+            Path.Combine(oldRoot, "runtimes", "llama-server.exe"),
+            "{}",
+            DateTimeOffset.UtcNow));
+        Directory.CreateDirectory(Path.Combine(newRoot, "state"));
+        File.WriteAllText(
+            Path.Combine(newRoot, "state", "service-config.json"),
+            """{"ExecutablePath":"OLD","Arguments":[],"ModelId":"moved-model"}""".Replace("OLD", Path.Combine(oldRoot, "runtimes", "llama-server.exe").Replace("\\", "\\\\")));
 
-        var legacyWorkspace = Path.Combine(localAppData, "llama.cpp Console");
-        Directory.CreateDirectory(legacyWorkspace);
+        var relocated = await new WorkspaceRelocationService().ApplyAsync(store, oldSettings, newRoot);
+        var models = await store.ListModelsAsync();
+        var runtimes = await store.ListRuntimesAsync();
+        var config = File.ReadAllText(Path.Combine(newRoot, "state", "service-config.json"));
 
-        var reusedWorkspace = WorkspaceRootResolver.Resolve(null, null, localAppData);
-
-        Assert.Equal(legacyWorkspace, reusedWorkspace, ignoreCase: true);
-
-        Directory.Delete(legacyWorkspace, recursive: true);
-        var legacyCodeWorkspace = Path.Combine(localAppData, "LocalLlmConsole");
-        Directory.CreateDirectory(legacyCodeWorkspace);
-
-        var reusedCodeWorkspace = WorkspaceRootResolver.Resolve(null, null, localAppData);
-
-        Assert.Equal(legacyCodeWorkspace, reusedCodeWorkspace, ignoreCase: true);
+        Assert.Equal(Path.GetFullPath(newRoot), relocated.WorkspaceRoot, ignoreCase: true);
+        Assert.Equal(Path.Combine(newRoot, "models"), relocated.ModelsRoot, ignoreCase: true);
+        Assert.Equal(Path.Combine(newRoot, "models", "model.gguf"), models[0].ModelPath, ignoreCase: true);
+        Assert.Contains(newRoot.Replace("\\", "\\\\"), models[0].MetadataJson, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(oldRoot.Replace("\\", "\\\\"), models[0].MetadataJson, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(Path.Combine(newRoot, "runtimes", "llama-server.exe"), runtimes[0].ExecutablePath, ignoreCase: true);
+        Assert.Contains(newRoot.Replace("\\", "\\\\"), config, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(oldRoot.Replace("\\", "\\\\"), config, StringComparison.OrdinalIgnoreCase);
     }
 
 

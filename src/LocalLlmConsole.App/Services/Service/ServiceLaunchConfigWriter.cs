@@ -4,7 +4,7 @@ namespace LocalLlmConsole.Services;
 
 /// <summary>
 /// Пишет конфигурацию запуска llama-server для Windows-службы
-/// в <c>data/state/service-config.json</c> (рядом с exe службы).
+/// в <c>state/service-config.json</c> (рядом с exe службы).
 /// Служба (LocalLlmConsole.Service) читает этот файл при старте.
 /// </summary>
 public sealed class ServiceLaunchConfigWriter

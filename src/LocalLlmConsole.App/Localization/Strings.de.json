@@ -878,7 +878,7 @@
   "Help.Article.two-apis.Title": "Die zwei APIs verstehen",
   "Help.Article.ui-and-data.Action.1": "Einstellungen öffnen",
   "Help.Article.ui-and-data.Detail.1": "UI-Umschalter verbergen Übersichtskarten, Logs, Metriken oder Hugging Face-Steuerungen, ohne deren Dienste zu deaktivieren.",
-  "Help.Article.ui-and-data.Detail.2": "Portable Installationen behalten normalerweise Modelle, Runtimes, Status, Cache und Logs unter data neben der ausführbaren Datei.",
+  "Help.Article.ui-and-data.Detail.2": "Each copy keeps models, runtimes, state, cache, and logs beside LlamaCppWindowsManager.exe — never AppData and never a shared environment variable.",
   "Help.Article.ui-and-data.Detail.3": "Starten Sie mit Windows und minimieren Sie das Verhalten für den aktuellen Windows-Benutzer.",
   "Help.Article.ui-and-data.Summary": "Einstellungen werden automatisch angewendet und der Arbeitsbereich bleibt für den laufenden Prozess fixiert.",
   "Help.Article.ui-and-data.Title": "App-Verhalten und Daten",

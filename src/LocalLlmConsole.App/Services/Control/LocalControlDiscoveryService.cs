@@ -3,20 +3,15 @@ namespace LocalLlmConsole.Services;
 public sealed class LocalControlDiscoveryService
 {
     private readonly string _workspaceRoot;
-    private readonly string _userLocatorPath;
     private readonly string _workspaceLocatorPath;
 
     public LocalControlDiscoveryService(string workspaceRoot)
     {
         _workspaceRoot = Path.GetFullPath(workspaceRoot);
         _workspaceLocatorPath = Path.Combine(_workspaceRoot, "state", "control.json");
-        _userLocatorPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "llama.cpp Windows Manager",
-            "control.json");
     }
 
-    public IReadOnlyList<string> LocatorPaths => [_workspaceLocatorPath, _userLocatorPath];
+    public IReadOnlyList<string> LocatorPaths => [_workspaceLocatorPath];
 
     public void Publish(Uri baseUri, string sessionToken)
     {

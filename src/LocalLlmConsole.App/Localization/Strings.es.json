@@ -878,7 +878,7 @@
   "Help.Article.two-apis.Title": "Entienda las dos APIs",
   "Help.Article.ui-and-data.Action.1": "Abrir Ajustes",
   "Help.Article.ui-and-data.Detail.1": "Los interruptores de la interfaz de usuario ocultan tarjetas de Vista general, registros, métricas o controles de Hugging Face sin desactivar sus servicios.",
-  "Help.Article.ui-and-data.Detail.2": "Las instalaciones portátiles normalmente mantienen modelos, runtimes, estado, caché y registros en la carpeta data junto al ejecutable.",
+  "Help.Article.ui-and-data.Detail.2": "Each copy keeps models, runtimes, state, cache, and logs beside LlamaCppWindowsManager.exe — never AppData and never a shared environment variable.",
   "Help.Article.ui-and-data.Detail.3": "Comience con Windows y el comportamiento de minimizar se aplica al usuario actual de Windows.",
   "Help.Article.ui-and-data.Summary": "Los ajustes se aplican automáticamente y el espacio de trabajo permanece fijo para el proceso en ejecución.",
   "Help.Article.ui-and-data.Title": "Comportamiento de la aplicación y datos",

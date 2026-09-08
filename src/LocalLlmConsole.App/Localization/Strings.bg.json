@@ -876,7 +876,7 @@
   "Help.Article.two-apis.Title": "Разберете двата API",
   "Help.Article.ui-and-data.Action.1": "Отворете Настройки",
   "Help.Article.ui-and-data.Detail.1": "UI превключването скрива картите в Обзор, логовете, метриките или контролите на Hugging Face, без да деактивира техните услуги.",
-  "Help.Article.ui-and-data.Detail.2": "Портабилните инсталации обикновено запазват моделите, средите за изпълнение, състоянието, кеша и логовете в папката data до изпълнителния файл.",
+  "Help.Article.ui-and-data.Detail.2": "Each copy keeps models, runtimes, state, cache, and logs beside LlamaCppWindowsManager.exe — never AppData and never a shared environment variable.",
   "Help.Article.ui-and-data.Detail.3": "Започнете с Windows и поведението, което се минимизира, се прилага за текущия потребител на Windows.",
   "Help.Article.ui-and-data.Summary": "Настройките се прилагат автоматично, а работната област остава фиксирана за работещия процес.",
   "Help.Article.ui-and-data.Title": "Поведение на приложението и данни",

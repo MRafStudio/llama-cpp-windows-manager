@@ -878,7 +878,7 @@
   "Help.Article.two-apis.Title": "Comprendre les deux API",
   "Help.Article.ui-and-data.Action.1": "Ouvrir les paramètres",
   "Help.Article.ui-and-data.Detail.1": "Les commutateurs d'interface utilisateur masquent les cartes d'aperçu, les journaux, les métriques ou les commandes Hugging Face sans désactiver leurs services.",
-  "Help.Article.ui-and-data.Detail.2": "Les installations portables conservent normalement les modèles, les environnements d'exécution, l'état, le cache et les journaux dans le dossier data à côté de l'exécutable.",
+  "Help.Article.ui-and-data.Detail.2": "Each copy keeps models, runtimes, state, cache, and logs beside LlamaCppWindowsManager.exe — never AppData and never a shared environment variable.",
   "Help.Article.ui-and-data.Detail.3": "Démarrer avec Windows et minimiser le comportement s'applique à l'utilisateur Windows actuel.",
   "Help.Article.ui-and-data.Summary": "Les paramètres s'appliquent automatiquement et l'espace de travail reste fixe pour le processus en cours.",
   "Help.Article.ui-and-data.Title": "Comportement de l'application et données",

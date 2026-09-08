@@ -878,7 +878,7 @@
   "Help.Article.two-apis.Title": "Comprendi le due API",
   "Help.Article.ui-and-data.Action.1": "Apri Impostazioni",
   "Help.Article.ui-and-data.Detail.1": "Gli switch dell'interfaccia utente nascondono le schede Panoramica, i log, le metriche o i controlli Hugging Face senza disabilitare i relativi servizi.",
-  "Help.Article.ui-and-data.Detail.2": "Le installazioni portatili mantengono normalmente modelli, runtime, stato, cache e log sotto data accanto all'eseguibile.",
+  "Help.Article.ui-and-data.Detail.2": "Each copy keeps models, runtimes, state, cache, and logs beside LlamaCppWindowsManager.exe — never AppData and never a shared environment variable.",
   "Help.Article.ui-and-data.Detail.3": "Inizia con Windows e il comportamento di minimizzazione si applica all'utente Windows corrente.",
   "Help.Article.ui-and-data.Summary": "Le impostazioni si applicano automaticamente e lo spazio di lavoro rimane fisso per il processo in esecuzione.",
   "Help.Article.ui-and-data.Title": "Comportamento dell'app e dati",
